@@ -155,10 +155,11 @@ export default function TutorPage() {
         </div>
         <div className="bg-white rounded-lg shadow-sm p-6 h-full">
           <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
-            <div className="grid grid-cols-6 gap-3 justify-center items-center">
+            <div className="grid grid-cols-6 gap-x-10 gap-y-6 justify-center items-center w-full max-w-4xl mx-auto">
               {Array.from({ length: 26 }, (_, i) => (
-                <div key={i} className="text-2xl font-extrabold text-gray-700 py-2">
-                  {String.fromCharCode(65 + i)}
+                <div key={i} className="flex items-center justify-start py-2">
+                  <span className="text-2xl font-extrabold text-gray-700 mr-6">{String.fromCharCode(65 + i)}</span>
+                  <span className="inline-block min-w-[120px] h-6 align-middle"></span>
                 </div>
               ))}
             </div>
