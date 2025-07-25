@@ -1,0 +1,26 @@
+/* chapterListScroll.css */
+.chapter-list-scroll {
+  max-height: 520px; /* Match the max-h-[520px] from the component */
+  overflow-y: hidden; /* Hide the internal scrollbar */
+  scrollbar-width: none; /* Firefox - hide scrollbar */
+}
+.chapter-list-scroll::-webkit-scrollbar {
+  width: 0px; /* Hide webkit scrollbar */
+  background: transparent;
+}
+.chapter-list-scroll:hover::-webkit-scrollbar {
+  background: #e5e7eb; /* Tailwind gray-200 */
+}
+.chapter-list-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 8px;
+}
+.chapter-list-scroll:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Tailwind gray-300 */
+}
+.chapter-list-scroll {
+  scrollbar-color: transparent transparent;
+}
+.chapter-list-scroll:hover {
+  scrollbar-color: #cbd5e1 #e5e7eb;
+} 

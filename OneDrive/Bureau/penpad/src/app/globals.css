@@ -1,0 +1,369 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  
+  body {
+    @apply text-gray-900;
+    background: #f5f5f5 !important;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .editor-content {
+    @apply prose prose-lg max-w-none focus:outline-none;
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif !important;
+    color: #181818;
+    font-size: 14px !important; /* Default font size for 11pt */
+  }
+  
+
+  
+  .editor-content h1 {
+    @apply text-3xl font-bold mb-4;
+  }
+  
+  .editor-content h2 {
+    @apply text-2xl font-semibold mb-3;
+  }
+  
+  .editor-content h3 {
+    @apply text-xl font-semibold mb-2;
+  }
+  
+  .editor-content p, .prose p {
+    margin-bottom: var(--paragraph-spacing, 0.1em);
+  }
+  
+  .editor-content ul {
+    @apply list-disc list-inside mb-4;
+  }
+  
+  .editor-content ol {
+    @apply list-decimal list-inside mb-4;
+  }
+  
+  .editor-content blockquote {
+    @apply border-l-4 border-gray-300 pl-4 italic my-4;
+  }
+  
+  .editor-content code {
+    @apply bg-gray-100 px-1 py-0.5 rounded text-sm;
+  }
+  
+  .editor-content pre {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto;
+  }
+  
+  .tiptap p,
+  .tiptap.prose p,
+  .tiptap.prose-lg p,
+  .tiptap .prose p,
+  .tiptap .prose-lg p,
+  .tiptap .editor-content p {
+    margin-bottom: var(--paragraph-spacing, 0.1em);
+  }
+}
+
+/* Tighter paragraph spacing for the editor */
+.tiptap p,
+.tiptap .editor-content p {
+  margin-bottom: 0;
+  margin-top: 0;
+  /* line-height: 1.25 !important; */
+  /* Fix word wrapping for paragraphs */
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+  /* Use consistent line-height that matches the spacing settings */
+  line-height: var(--line-height, 1.15) !important;
+}
+
+.editor-content > *:first-child {
+  margin-top: -10px !important;
+  padding-top: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Disable browser spell-check underlines */
+.editor-content {
+  -webkit-text-decoration-skip-ink: none;
+  text-decoration-skip-ink: none;
+}
+
+/* Override browser spell-check underlines */
+.editor-content ::spelling-error {
+  text-decoration: none !important;
+}
+
+.editor-content ::grammar-error {
+  text-decoration: none !important;
+}
+
+/* Completely disable spell checking for rewrite input */
+.no-spell-check textarea {
+  -webkit-spell-check: false !important;
+  -moz-spell-check: false !important;
+  spell-check: false !important;
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  text-decoration-style: none !important;
+  text-decoration-color: transparent !important;
+}
+
+.no-spell-check textarea::selection {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+.no-spell-check textarea::-moz-selection {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+/* Force remove any spell check underlines */
+.no-spell-check textarea * {
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  text-decoration-style: none !important;
+  text-decoration-color: transparent !important;
+}
+
+/* Completely isolate rewrite input from editor spell checking */
+.rewrite-input-no-spellcheck {
+  -webkit-spell-check: false !important;
+  -moz-spell-check: false !important;
+  spell-check: false !important;
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  text-decoration-style: none !important;
+  text-decoration-color: transparent !important;
+  text-decoration-skip-ink: none !important;
+  -webkit-text-decoration-skip-ink: none !important;
+}
+
+.rewrite-input-no-spellcheck::selection {
+  background: #3b82f6 !important;
+  color: white !important;
+  text-shadow: none !important;
+}
+
+.rewrite-input-no-spellcheck::-moz-selection {
+  background: #3b82f6 !important;
+  color: white !important;
+  text-shadow: none !important;
+}
+
+/* Enhanced selection for better visibility */
+.rewrite-input-no-spellcheck::selection {
+  background: #2563eb !important;
+  color: white !important;
+  text-shadow: none !important;
+}
+
+.rewrite-input-no-spellcheck::-moz-selection {
+  background: #2563eb !important;
+  color: white !important;
+  text-shadow: none !important;
+}
+
+/* Additional selection styles for better visibility */
+.rewrite-input-no-spellcheck {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Ensure selection is visible in all browsers */
+.rewrite-input-no-spellcheck::selection {
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.rewrite-input-no-spellcheck::-moz-selection {
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+/* Override any inherited spell checking styles */
+.rewrite-input-no-spellcheck * {
+  text-decoration: none !important;
+  text-decoration-line: none !important;
+  text-decoration-style: none !important;
+  text-decoration-color: transparent !important;
+}
+
+/* Only show our custom grammar underlines */
+.grammar-underline {
+  text-decoration: wavy underline red;
+  text-decoration-thickness: 1px;
+  text-decoration-skip-ink: none;
+}
+
+/* Flashing blue outline for daily goal celebration (outline only, no opacity) */
+@keyframes flashOutline {
+  0%, 100% { box-shadow: 0 0 0 2px #3b82f6; }
+  50% { box-shadow: 0 0 0 2px #60a5fa; }
+}
+.flash-bg {
+  animation: flashOutline 0.8s infinite;
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* A4 editor styling */
+.editor-container {
+  background: white !important;
+  min-height: 1056px; /* A4 height at 96 DPI */
+  padding: 0;
+  max-width: 800px !important;
+  margin: 0 auto !important;
+  border: 0.5px solid #d1d5db !important;
+  overflow: visible !important;
+}
+
+.editor-content {
+  background: white !important;
+  margin: 0 auto !important;
+  max-width: 800px !important;
+  min-height: 1056px !important; /* A4 height at 96 DPI */
+  padding: 50px 8px 96px 8px !important; /* Minimal left/right margins */
+  position: relative !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  /* Fix word wrapping */
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+  /* Ensure consistent line spacing */
+  line-height: var(--line-height, 1.15) !important;
+}
+
+.editor-content::before,
+.editor-content::after {
+  display: none !important;
+}
+
+/* A4 tiptap styling */
+.tiptap {
+  background: white !important;
+  margin: 0 auto !important;
+  max-width: 800px !important;
+  min-height: 1056px !important; /* A4 height at 96 DPI */
+  padding: 50px 8px 96px 8px !important; /* Minimal left/right margins */
+  position: relative !important;
+  box-sizing: border-box !important;
+  /* Ensure only content area is clickable */
+  pointer-events: auto !important;
+  overflow: visible !important;
+  font-size: 14px !important; /* Default font size for 11pt */
+  /* Fix word wrapping */
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  white-space: normal !important;
+}
+
+/* Ensure only one paragraph is visible and editable */
+.single-editor p:not(.single-paragraph) {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.single-editor .single-paragraph {
+  pointer-events: auto;
+}
+
+/* Allow typing in the editor */
+.tiptap {
+  pointer-events: auto;
+}
+
+.tiptap > * {
+  pointer-events: auto;
+}
+
+/* Allow TipTap FontSize extension to work properly */
+.tiptap [data-font-size] {
+  font-size: attr(data-font-size);
+}
+
+/* Ensure textStyle marks work properly */
+.tiptap .text-style {
+  font-size: inherit;
+}
+
+/* Ensure font size is applied to text */
+.ProseMirror [style*="font-size"] {
+  font-size: inherit;
+}
+
+/* Cursor font size styling */
+.cursor-font-size {
+  --cursor-font-size: 16px;
+}
+
+.cursor-font-size::after {
+  content: '';
+  position: absolute;
+  left: var(--cursor-position, 0);
+  top: 0;
+  width: 2px;
+  height: var(--cursor-font-size);
+  background-color: #000;
+  animation: blink 1s infinite;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@layer utilities {
+  .chapter-list-scroll::-webkit-scrollbar {
+    width: 14px;
+    background: transparent;
+  }
+  .chapter-list-scroll::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.45);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  .chapter-list-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* Multi-page editor styling */
+.multi-page-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.multi-page-editor .editor-container {
+  margin-bottom: 0;
+}
+
+.multi-page-editor .page-bottom-line {
+  z-index: 10;
+} 
+
+/* AI-generated text darker blue highlight styling */
+.ProseMirror-highlight {
+  background-color: #bfdbfe !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+  text-decoration: none !important;
+}

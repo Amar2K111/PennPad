@@ -1,0 +1,1070 @@
+'use client'
+
+import {
+  BoldIcon,
+  ItalicIcon,
+  UnderlineIcon,
+  StrikethroughIcon,
+  ListBulletIcon,
+  CodeBracketIcon,
+  PhotoIcon,
+  LinkIcon,
+  TableCellsIcon,
+  PaintBrushIcon,
+  ArrowUturnLeftIcon,
+  ArrowUturnRightIcon,
+  MinusIcon,
+  PlusIcon,
+  PencilIcon,
+  ChevronDownIcon,
+  CheckIcon,
+  ViewColumnsIcon,
+  ArrowDownTrayIcon,
+} from '@heroicons/react/24/outline'
+import { cn } from '@/app/lib/utils'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { useEditorStore } from '@/app/store/useEditorStore'
+
+export default function Toolbar({ 
+  editor, 
+  totalWordCount, 
+  onUndo, 
+  onRedo, 
+  canUndo = true, 
+  canRedo = true, 
+  fontSize: fontSizeProp, 
+  setFontSize: setFontSizeProp, 
+  onViewAllPages 
+}: {
+  editor: any;
+  totalWordCount: number;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  fontSize?: number;
+  setFontSize?: (size: number) => void;
+  onViewAllPages?: () => void;
+}) {
+  const [fontSizeState, setFontSizeState] = useState(13) // Changed from 11 to 13
+  const fontSize = fontSizeProp !== undefined ? fontSizeProp : fontSizeState
+  const setFontSize = setFontSizeProp || setFontSizeState
+  const [alignDropdownOpen, setAlignDropdownOpen] = useState(false)
+  const [alignment, setAlignment] = useState('left')
+  const alignBtnRef = useRef(null)
+  const [spacingDropdownOpen, setSpacingDropdownOpen] = useState(false)
+  const BASE_LINE_HEIGHT = 1.15;
+  const lineSpacingOptions = [
+    { label: 'Single', value: '1.0' },
+    { label: '1.15', value: '1.15' },
+    { label: '1.5', value: '1.5' },
+    { label: 'Double', value: '2.0' },
+  ];
+  const [lineSpacing, setLineSpacing] = useState('1.15');
+  const spacingBtnRef = useRef(null)
+  const dropdownRef = useRef(null)
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 })
+  const [colorDropdownOpen, setColorDropdownOpen] = useState(false)
+  const colorBtnRef = useRef(null)
+  const colorDropdownRef = useRef(null)
+  const [colorDropdownPos, setColorDropdownPos] = useState({ left: 0, top: 0 })
+  const [highlightDropdownOpen, setHighlightDropdownOpen] = useState(false)
+  const highlightBtnRef = useRef(null)
+  const highlightDropdownRef = useRef(null)
+  const [highlightDropdownPos, setHighlightDropdownPos] = useState({ left: 0, top: 0 })
+  const spacingDropdownRef = useRef(null)
+  const {
+    wordCount,
+    dailyCount,
+    wordGoal,
+    dailyGoal,
+    setWordGoal,
+    setDailyGoal,
+    resetDailyCount,
+    setDailyStartCount,
+    setPrevWordCount,
+    loadAnalyticsFromCloud,
+    saveAnalyticsToCloud,
+    celebration,
+    setCelebration,
+  } = useEditorStore()
+  const [editingWordGoal, setEditingWordGoal] = useState(false)
+  const [editingDailyGoal, setEditingDailyGoal] = useState(false)
+  const [wordGoalInput, setWordGoalInput] = useState(wordGoal)
+  const [dailyGoalInput, setDailyGoalInput] = useState(dailyGoal);
+  const [showResetPopup, setShowResetPopup] = useState(false);
+  const [showDailyGoalModal, setShowDailyGoalModal] = useState(false);
+  const dailyCountRef = useRef(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [flash, setFlash] = useState(false);
+  const [fontSizeInput, setFontSizeInput] = useState('13'); // Changed from '11' to '13'
+  const [currentFontSize, setCurrentFontSize] = useState(13); // Changed from 11 to 13
+
+  useEffect(() => { setWordGoalInput(wordGoal) }, [wordGoal])
+  useEffect(() => { setDailyGoalInput(dailyGoal) }, [dailyGoal]);
+
+  // Load analytics from cloud when component mounts
+  useEffect(() => {
+    loadAnalyticsFromCloud();
+  }, [loadAnalyticsFromCloud]);
+
+  // Save analytics to cloud when daily goal changes
+  useEffect(() => {
+    if (dailyGoal > 0) {
+      saveAnalyticsToCloud();
+    }
+  }, [dailyGoal, saveAnalyticsToCloud]);
+
+  // Save analytics to cloud when daily count changes
+  useEffect(() => {
+    if (dailyCount > 0) {
+      saveAnalyticsToCloud();
+    }
+  }, [dailyCount, saveAnalyticsToCloud]);
+
+  // Update font size input when current font size changes
+  useLayoutEffect(() => {
+    // Use the exact currentFontSize value, not the closest match
+    const currentLabel = pxToLabel(currentFontSize);
+    
+    // Update both React state and DOM directly
+    setFontSizeInput(currentLabel);
+    
+    // Also update the DOM input field directly as a backup
+    const inputElement = document.querySelector('input[title="Font size"]') as HTMLInputElement;
+    if (inputElement) {
+      inputElement.value = currentLabel;
+    }
+  }, [currentFontSize]);
+
+  useEffect(() => {
+    const currentLabel = pxToLabel(currentFontSize);
+    setFontSizeInput(currentLabel);
+    const inputElement = document.querySelector('input[type="text"][value="' + currentLabel + '"]') as HTMLInputElement;
+    if (inputElement) {
+      inputElement.value = currentLabel;
+    }
+  }, [currentFontSize]);
+
+  useEffect(() => {
+    const currentLabel = pxToLabel(currentFontSize);
+    setFontSizeInput(currentLabel);
+  }, [currentFontSize]);
+
+  const handleWordGoalSave = () => {
+    if (setWordGoal) setWordGoal(Number(wordGoalInput) || 0)
+    setEditingWordGoal(false)
+  }
+  // Remove handleDailyGoalSave function and any references to it
+  // Only call setDailyGoal in the Save button's onClick
+
+  const fontOptions = [
+    { label: 'Arial', value: 'Arial, Helvetica Neue, Helvetica, sans-serif' },
+    { label: 'Times New Roman', value: '"Times New Roman", Times, serif' },
+    { label: 'Georgia', value: 'Georgia, serif' },
+    { label: 'Courier New', value: '"Courier New", Courier, monospace' },
+    { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
+    { label: 'Trebuchet MS', value: '"Trebuchet MS", Helvetica, sans-serif' },
+    { label: 'Comic Sans MS', value: '"Comic Sans MS", cursive, sans-serif' },
+    { label: 'Helvetica', value: 'Helvetica, Arial, sans-serif' },
+    { label: 'Garamond', value: 'Garamond, serif' },
+  ];
+  const [fontFamily, setFontFamily] = useState(fontOptions[0].value);
+
+  // Test console.log is working - moved after state declarations
+  // console.log('=== TOOLBAR COMPONENT RENDERED ===')
+  // console.log('Editor available:', !!editor, editor)
+  // console.log('alignDropdownOpen state:', alignDropdownOpen)
+  // console.log('dailyGoal from store:', dailyGoal)
+  // console.log('dailyCount from store:', dailyCount)
+
+  const toggleBold = () => {}
+  const toggleItalic = () => {}
+  const toggleUnderline = () => {}
+  const toggleStrike = () => {}
+  const toggleBulletList = () => {}
+  const toggleOrderedList = () => {}
+  const toggleBlockquote = () => {}
+  const toggleCodeBlock = () => {}
+  // Remove unused setTextAlign stub
+
+  const addImage = () => {
+    const url = window.prompt('Enter image URL')
+    if (url) {
+      // editor.chain().focus().setImage({ src: url }).run()
+    }
+  }
+
+  const addLink = () => {
+    const url = window.prompt('Enter URL')
+    if (url) {
+      // editor.chain().focus().setLink({ href: url }).run()
+    }
+  }
+
+  const insertTable = () => {
+    // editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+  }
+
+  const setColor = (color: string) => {
+    // editor.chain().focus().setColor(color).run()
+  }
+
+  const setHighlight = (color: string) => {
+    // editor.chain().focus().setHighlight({ color }).run()
+  }
+
+  const handleUndo = () => {
+    if (onUndo) return onUndo();
+    if (editor) editor.chain().focus().undo().run();
+  }
+  const handleRedo = () => {
+    if (onRedo) return onRedo();
+    if (editor) editor.chain().focus().redo().run();
+  }
+
+  // Complete list of Google Docs-style font sizes in px, strictly increasing
+  const FONT_SIZES_PX = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72]; // Added 13
+  // Corresponding labels for display (Google Docs style)
+  const pxToLabel = (px: number) => {
+    return px.toString();
+  }
+  const labelToPx = (label: string) => {
+    const px = parseInt(label, 10);
+    return isNaN(px) ? 13 : px; // Changed default from 11 to 13
+  }
+
+  // Helper function to get next/previous font size from the array
+  const getNextFontSize = (currentPx: number) => {
+    const currentIndex = FONT_SIZES_PX.indexOf(currentPx);
+    if (currentIndex === -1) {
+      // If current size not in array, find closest
+      const closestIndex = FONT_SIZES_PX.reduce((prev, curr, index) => 
+        Math.abs(curr - currentPx) < Math.abs(FONT_SIZES_PX[prev] - currentPx) ? index : prev, 0);
+      return FONT_SIZES_PX[Math.min(closestIndex + 1, FONT_SIZES_PX.length - 1)];
+    }
+    return FONT_SIZES_PX[Math.min(currentIndex + 1, FONT_SIZES_PX.length - 1)];
+  }
+
+  const getPrevFontSize = (currentPx: number) => {
+    const currentIndex = FONT_SIZES_PX.indexOf(currentPx);
+    if (currentIndex === -1) {
+      // If current size not in array, find closest
+      const closestIndex = FONT_SIZES_PX.reduce((prev, curr, index) => 
+        Math.abs(curr - currentPx) < Math.abs(FONT_SIZES_PX[prev] - currentPx) ? index : prev, 0);
+      return FONT_SIZES_PX[Math.max(closestIndex - 1, 0)];
+    }
+    return FONT_SIZES_PX[Math.max(currentIndex - 1, 0)];
+  }
+
+  const handleFontSizeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFontSizeInput(e.target.value);
+  };
+
+  const handleFontSizeInputBlur = () => {
+    const inputValue = fontSizeInput.trim();
+    
+    if (inputValue && editor) {
+      const newPx = labelToPx(inputValue);
+      
+      if (newPx) {
+        setCurrentFontSize(newPx);
+        
+        // Apply font size using helper function
+        applyFontSizeToDOM(newPx);
+      }
+    }
+    
+    // Don't reset input here - let the useEffect handle it
+  };
+
+  const handleFontSizeInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  // Helper function to apply font size to DOM
+  const applyFontSizeToDOM = (newSize: number) => {
+    if (!editor) return;
+    
+    const { from, to } = editor.state.selection;
+    
+    // Apply font size using TipTap's TextStyle extension
+    if (from !== to) {
+      // If text is selected, apply to selection
+      editor.chain().focus().setMark('textStyle', { fontSize: `${newSize}px` }).run();
+    } else {
+      // If no selection, apply to current position (affects next typed character)
+      editor.chain().focus().setMark('textStyle', { fontSize: `${newSize}px` }).run();
+    }
+  };
+
+
+
+  // Get current text color from editor selection if available
+  let currentColor = '#183153';
+  if (editor && editor.isActive('textStyle')) {
+    const attrs = editor.getAttributes('textStyle');
+    if (attrs.color) {
+      currentColor = attrs.color;
+    }
+  }
+
+  // Get current highlight color from editor selection if available
+  let currentHighlight = '#ffffff';
+  if (editor && editor.isActive('highlight')) {
+    const attrs = editor.getAttributes('highlight');
+    if (attrs.color) {
+      currentHighlight = attrs.color;
+    }
+  }
+
+  // Google Docs-style color palette
+  const COLOR_PALETTE = [
+    ['#000000', '#434343', '#666666', '#999999', '#b7b7b7', '#cccccc', '#d9d9d9', '#efefef', '#f3f3f3', '#ffffff'],
+    ['#ff0000', '#ff9900', '#ffff00', '#00ff00', '#00ffff', '#4a86e8', '#0000ff', '#9900ff', '#ff00ff', '#e6b8af'],
+    ['#f4cccc', '#fce5cd', '#fff2cc', '#d9ead3', '#d0e0e3', '#c9daf8', '#cfe2f3', '#d9d2e9', '#ead1dc', '#dd7e6b'],
+    ['#ea9999', '#f9cb9c', '#ffe599', '#b6d7a8', '#a2c4c9', '#a4c2f4', '#9fc5e8', '#b4a7d6', '#d5a6bd', '#cc4125'],
+    ['#e06666', '#f6b26b', '#ffd966', '#93c47d', '#76a5af', '#6d9eeb', '#6fa8dc', '#8e7cc3', '#c27ba0', '#a61c00'],
+    ['#cc0000', '#e69138', '#f1c232', '#6aa84f', '#45818e', '#3c78d8', '#3d85c6', '#674ea7', '#a64d79', '#85200c'],
+    ['#990000', '#b45f06', '#bf9000', '#38761d', '#134f5c', '#1155cc', '#0b5394', '#351c75', '#741b47', '#5b0f00'],
+  ];
+
+  const handleDecreaseFont = () => {
+    if (editor) {
+      const newSize = getPrevFontSize(currentFontSize);
+      setCurrentFontSize(newSize);
+      
+      // Apply font size using helper function
+      applyFontSizeToDOM(newSize);
+      
+      // Force a re-render
+      setTimeout(() => {
+        editor.commands.focus();
+      }, 100);
+    }
+  }
+  
+  const handleIncreaseFont = () => {
+    if (editor) {
+      const newSize = getNextFontSize(currentFontSize);
+      setCurrentFontSize(newSize);
+      
+      // Apply font size using helper function
+      applyFontSizeToDOM(newSize);
+      
+      // Force a re-render
+      setTimeout(() => {
+        editor.commands.focus();
+      }, 100);
+    }
+  }
+  const handleBold = () => {
+    if (editor) {
+      editor.chain().focus().toggleBold().run();
+    }
+  }
+  const handleItalic = () => {
+    if (editor) {
+      editor.chain().focus().toggleItalic().run();
+    }
+  }
+  const handleUnderline = () => {
+    if (editor) {
+      editor.chain().focus().toggleUnderline().run();
+    }
+  }
+  const handleTextColor = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const color = e.target.value;
+    if (editor) {
+      editor.chain().focus().setColor(color).run();
+    }
+  }
+  const handleHighlight = () => {}
+  const handleAlignClick = () => {
+    if (!editor) {
+      return
+    }
+    setAlignDropdownOpen(v => !v)
+  }
+  const handleSelectAlign = (align: string) => {
+    
+    if (editor) {
+      const result = editor.chain().focus().setTextAlign(align).run();
+      setAlignment(align);
+    } else {
+    }
+    setAlignDropdownOpen(false);
+  }
+
+  // Map lineSpacing to margin-bottom (in em)
+  const spacingToMargin = {
+    '1.0': '0.01em',      // Single (very tight)
+    '1.15': '0.10em',    // 1.15 (clear step up)
+    '1.5': '0.3em',      // 1.5
+    '2.0': '0.7em',      // Double
+  };
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        alignBtnRef.current &&
+        !alignBtnRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setAlignDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [])
+
+  useEffect(() => {
+    if (!spacingDropdownOpen) return;
+    function handleClickOutside(event) {
+      if (
+        spacingBtnRef.current &&
+        !spacingBtnRef.current.contains(event.target) &&
+        spacingDropdownRef.current &&
+        !spacingDropdownRef.current.contains(event.target)
+      ) {
+        setSpacingDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [spacingDropdownOpen]);
+
+  // Helper to check if a mark is active or stored
+  const isMarkActive = (mark) => {
+    if (!editor) return false;
+    if (editor.isActive(mark)) return true;
+    const stored = editor.state.storedMarks;
+    return stored ? stored.some(m => m.type.name === mark) : false;
+  }
+
+  // Helper to check current text alignment
+  const getCurrentAlignment = () => {
+    if (!editor) return 'left';
+    if (editor.isActive({ textAlign: 'left' })) return 'left';
+    if (editor.isActive({ textAlign: 'center' })) return 'center';
+    if (editor.isActive({ textAlign: 'right' })) return 'right';
+    if (editor.isActive({ textAlign: 'justify' })) return 'justify';
+    return 'left';
+  }
+
+  // Update alignment state when editor changes
+  useEffect(() => {
+    if (editor) {
+      const currentAlign = getCurrentAlignment();
+      setAlignment(currentAlign);
+    }
+  }, [editor]);
+
+
+
+  // Listen to editor updates to sync alignment state
+  useEffect(() => {
+    if (!editor) return;
+    
+    const updateAlignment = () => {
+      const currentAlign = getCurrentAlignment();
+      setAlignment(currentAlign);
+    };
+
+    // Update immediately
+    updateAlignment();
+    
+    // Listen to editor updates
+    editor.on('update', updateAlignment);
+    editor.on('selectionUpdate', updateAlignment);
+    
+    return () => {
+      editor.off('update', updateAlignment);
+      editor.off('selectionUpdate', updateAlignment);
+    };
+  }, [editor]);
+
+  useEffect(() => {
+    if (alignDropdownOpen && alignBtnRef.current) {
+      const rect = alignBtnRef.current.getBoundingClientRect();
+      setDropdownPos({
+        left: rect.left + rect.width / 2,
+        top: rect.bottom + 4
+      });
+    }
+  }, [alignDropdownOpen]);
+
+  useLayoutEffect(() => {
+    function updateDropdownPos() {
+      if (alignDropdownOpen && alignBtnRef.current) {
+        const rect = alignBtnRef.current.getBoundingClientRect();
+        setDropdownPos({
+          left: rect.left + rect.width / 2,
+          top: rect.bottom + 4 // 4px gap below the button
+        });
+      }
+    }
+    if (alignDropdownOpen) {
+      updateDropdownPos();
+      window.addEventListener('resize', updateDropdownPos);
+      window.addEventListener('scroll', updateDropdownPos, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updateDropdownPos);
+      window.removeEventListener('scroll', updateDropdownPos, true);
+    }
+  }, [alignDropdownOpen])
+
+  useLayoutEffect(() => {
+    function updateColorDropdownPos() {
+      if (colorDropdownOpen && colorBtnRef.current) {
+        const rect = colorBtnRef.current.getBoundingClientRect();
+        setColorDropdownPos({
+          left: rect.left + rect.width / 2,
+          top: rect.bottom + 4
+        });
+      }
+    }
+    if (colorDropdownOpen) {
+      updateColorDropdownPos();
+      window.addEventListener('resize', updateColorDropdownPos);
+      window.addEventListener('scroll', updateColorDropdownPos, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updateColorDropdownPos);
+      window.removeEventListener('scroll', updateColorDropdownPos, true);
+    }
+  }, [colorDropdownOpen])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        colorBtnRef.current &&
+        !colorBtnRef.current.contains(event.target) &&
+        colorDropdownRef.current &&
+        !colorDropdownRef.current.contains(event.target)
+      ) {
+        setColorDropdownOpen(false);
+      }
+    }
+    if (colorDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [colorDropdownOpen])
+
+  useLayoutEffect(() => {
+    function updateHighlightDropdownPos() {
+      if (highlightDropdownOpen && highlightBtnRef.current) {
+        const rect = highlightBtnRef.current.getBoundingClientRect();
+        setHighlightDropdownPos({
+          left: rect.left + rect.width / 2,
+          top: rect.bottom + 4
+        });
+      }
+    }
+    if (highlightDropdownOpen) {
+      updateHighlightDropdownPos();
+      window.addEventListener('resize', updateHighlightDropdownPos);
+      window.addEventListener('scroll', updateHighlightDropdownPos, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updateHighlightDropdownPos);
+      window.removeEventListener('scroll', updateHighlightDropdownPos, true);
+    }
+  }, [highlightDropdownOpen])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        highlightBtnRef.current &&
+        !highlightBtnRef.current.contains(event.target) &&
+        highlightDropdownRef.current &&
+        !highlightDropdownRef.current.contains(event.target)
+      ) {
+        setHighlightDropdownOpen(false);
+      }
+    }
+    if (highlightDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [highlightDropdownOpen])
+
+  // Helper to render dropdown in a portal
+  const alignDropdown = alignDropdownOpen && typeof window !== 'undefined' && createPortal(
+    <div
+      ref={dropdownRef}
+      className="fixed bg-white rounded-lg shadow-lg border border-gray-200 z-[999999] py-2 px-0 text-sm select-none"
+      style={{
+        left: dropdownPos.left,
+        top: dropdownPos.top,
+        minWidth: 160,
+        pointerEvents: 'auto',
+        zIndex: 999999,
+        transform: 'translateX(-50%)',
+      }}
+    >
+      {alignmentOptions.map(option => (
+        <button
+          key={option.value}
+          onClick={() => handleSelectAlign(option.value)}
+          className={`
+            w-full text-left px-4 py-1 hover:bg-gray-100 ${alignment === option.value ? 'bg-blue-50 text-blue-700' : ''}
+          `}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>,
+    document.body
+  );
+
+  useEffect(() => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const margin = spacingToMargin[lineSpacing] || '0.8em';
+    
+    // Fix: Replace the problematic forEach with a safer approach
+    try {
+      if (editor.commands && typeof editor.commands.forEach === 'function') {
+        editor.commands.forEach((command, pos) => {
+          command.setNode('paragraph', { style: `margin-bottom: ${margin}; margin-top: 0;` });
+        });
+      } else {
+        // Fallback: Apply spacing directly to the editor element
+        const editorElement = editor.view.dom as HTMLElement;
+        if (editorElement) {
+          editorElement.style.setProperty('line-height', lineSpacing, 'important');
+        }
+      }
+    } catch (error) {
+      // Fallback: Apply spacing directly to the editor element
+      const editorElement = editor.view.dom as HTMLElement;
+      if (editorElement) {
+        editorElement.style.setProperty('line-height', lineSpacing, 'important');
+      }
+    }
+  }, [lineSpacing, editor]);
+
+  useEffect(() => {
+    if (!showDailyGoalModal) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setShowDailyGoalModal(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDailyGoalModal]);
+
+  // Calculate clamped values
+  const clampedDailyCount = dailyGoal > 0 ? Math.min(dailyCount, dailyGoal) : 0;
+  const clampedPercent = dailyGoal > 0 ? Math.min(100, Math.round((dailyCount / dailyGoal) * 100)) : 0;
+  
+  useEffect(() => {
+    if (clampedPercent === 100 && !celebration) {
+      setCelebration(true);
+      saveAnalyticsToCloud();
+    }
+    if (clampedPercent < 100 && celebration) {
+      setCelebration(false);
+      saveAnalyticsToCloud();
+    }
+  }, [clampedPercent, celebration, setCelebration, saveAnalyticsToCloud]);
+  
+  const highlight = dailyGoal > 0 && dailyCount >= dailyGoal;
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (celebration) {
+      setFlash(true);
+      interval = setInterval(() => setFlash(f => !f), 800);
+    } else {
+      setFlash(false);
+      if (interval) clearInterval(interval);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [celebration]);
+
+  // Helper to detect current font size from editor
+  const detectCurrentFontSize = () => {
+    if (!editor) return 13; // Changed default from 11 to 13
+    
+    // Check if textStyle is active
+    if (editor.isActive('textStyle')) {
+      const attrs = editor.getAttributes('textStyle');
+      
+      if (attrs.fontSize) {
+        const fontSizeMatch = attrs.fontSize.match(/(\d+)px/);
+        if (fontSizeMatch) {
+          const detectedSize = parseInt(fontSizeMatch[1], 10);
+          return detectedSize;
+        }
+      }
+    }
+    
+    // Check selection for inline styles
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      
+      if (container.nodeType === Node.TEXT_NODE) {
+        const parent = container.parentElement;
+        if (parent) {
+          const computedStyle = window.getComputedStyle(parent);
+          const fontSize = computedStyle.fontSize;
+          
+          const match = fontSize.match(/(\d+)px/);
+          if (match) {
+            const detectedSize = parseInt(match[1], 10);
+            return detectedSize;
+          }
+        }
+      }
+    }
+    
+    return 13; // Changed default from 11 to 13
+  };
+
+  return (
+    <div className="absolute left-1/2 -translate-x-1/2 bottom-0 z-10 mt-2">
+      <div className={`rounded-3xl border border-gray-100 bg-white flex items-center${flash ? ' flash-bg' : ''}`} style={{ minHeight: '40px' }}>
+        {/* Word Tracker */}
+        <div className="flex flex-col items-start justify-center px-4 py-0.5 mr-2 min-w-[180px]">
+          {/* Total Word Goal */}
+          <div className="flex items-center gap-2 text-xs font-medium mt-1">
+            <span className="text-gray-900">Total words:</span>
+            <span className="font-semibold text-gray-900">{totalWordCount}</span>
+          </div>
+          {/* (Spacer for removed progress bar below total words) */}
+          <div className="w-full h-0.5 bg-transparent rounded mt-0 mb-0"></div>
+          {/* Daily Word Goal - all on one line */}
+          <div
+            className={`flex items-center gap-2 text-xs font-medium w-full whitespace-nowrap relative select-none transition hover:bg-gray-100 hover:cursor-pointer rounded py-0.5 mb-0 ${dailyGoal > 0 ? 'text-gray-900' : 'text-gray-400'}${flash ? ' flash-bg' : ''}`}
+            onClick={() => setShowDailyGoalModal(true)}
+            style={{ position: 'relative' }}
+          >
+            <span>Daily words:</span>
+            <span className={dailyGoal > 0 ? 'font-semibold' : ''}>{dailyGoal > 0 ? clampedDailyCount : 0}</span>
+            <span>/</span>
+            <span className={dailyGoal > 0 ? 'font-semibold' : ''}>{dailyGoal > 0 ? dailyGoal : 0}</span>
+            <span className={`ml-1 ${dailyGoal > 0 ? 'font-semibold' : 'text-gray-300'}`}>({dailyGoal > 0 ? clampedPercent : 0}%)</span>
+          </div>
+          {showDailyGoalModal && (
+  <div ref={popupRef} className="absolute left-0 top-full mt-4 bg-white border border-gray-300 rounded shadow-lg p-2 z-50 min-w-[120px] w-max" style={{opacity: 1}}>
+    <div className="text-sm font-semibold text-gray-900 mb-1 text-center">Set Goal</div>
+    <div className="flex items-center justify-center gap-1 mb-2">
+      <div className="mb-2 relative w-20">
+        <input
+          type="number"
+          className="w-full px-1 py-0.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-200 text-xs"
+          value={dailyGoalInput}
+          min={0}
+          placeholder="Enter daily word goal"
+          onChange={e => setDailyGoalInput(parseInt(e.target.value) || 0)}
+          disabled={dailyGoal > 0}
+        />
+      </div>
+    </div>
+    <div className="flex justify-center">
+      {dailyGoal > 0 ? (
+        <button
+          className="mt-1 px-4 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs font-semibold"
+          onClick={async () => {
+            setDailyGoal(0);
+            setDailyGoalInput(0);
+            setCelebration(false);
+            setShowDailyGoalModal(false);
+            if (typeof saveAnalyticsToCloud === 'function') {
+              await saveAnalyticsToCloud();
+            }
+          }}
+        >
+          Stop
+        </button>
+      ) : (
+        <button
+          className="mt-1 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs font-semibold"
+          onClick={() => {
+            setDailyGoal(dailyGoalInput);
+            setDailyStartCount(wordCount);
+            setPrevWordCount(wordCount);
+            resetDailyCount();
+            setShowDailyGoalModal(false);
+          }}
+        >
+          Save
+        </button>
+      )}
+    </div>
+  </div>
+)}
+          {/* End Word Tracker */}
+          <div className="w-full h-1 bg-gray-200 rounded mt-0.5">
+            <div
+              className="h-1 bg-green-400 rounded"
+              style={{
+                width: `${clampedPercent}%`,
+                transition: 'width 0.3s'
+              }}
+            />
+          </div>
+        </div>
+        {/* End Word Tracker */}
+        <div className="flex items-center gap-2 px-3 py-0 font-sans max-w-fit">
+          {/* Grid/Preview Icon */}
+          <button title="View all pages" className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100" onClick={onViewAllPages}>
+            <ViewColumnsIcon className="h-5 w-5" />
+          </button>
+          {/* Export Icon */}
+          <button title="Export" className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100">
+            <ArrowDownTrayIcon className="h-5 w-5" />
+          </button>
+          {/* Undo */}
+          <button onClick={handleUndo} title="Undo" className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 disabled:opacity-40" disabled={!canUndo}>
+            <ArrowUturnLeftIcon className="h-5 w-5" />
+        </button>
+          {/* Redo */}
+          <button onClick={handleRedo} title="Redo" className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 disabled:opacity-40" disabled={!canRedo}>
+            <ArrowUturnRightIcon className="h-5 w-5" />
+        </button>
+          {/* Font family dropdown (replaces static Arial label) */}
+          <select
+            value={fontFamily}
+            onChange={e => {
+              setFontFamily(e.target.value);
+              if (editor) {
+                // Apply font family using CSS styling with !important to override existing styles
+                const editorElement = editor.view.dom as HTMLElement;
+                if (editorElement) {
+                  editorElement.style.setProperty('font-family', e.target.value, 'important');
+                }
+              }
+            }}
+            className="h-8 px-2 rounded border border-gray-300 text-sm font-sans bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 mx-1"
+            style={{ minWidth: 120 }}
+            title="Font family"
+          >
+            {fontOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {/* Font size controls */}
+          <div className="flex items-center gap-0.5">
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDecreaseFont();
+              }} 
+              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded" 
+              title="Decrease font size"
+              type="button"
+            >
+              <MinusIcon className="h-5 w-5" />
+            </button>
+            <input
+              type="text"
+              value={fontSizeInput}
+              onChange={handleFontSizeInputChange}
+              onBlur={handleFontSizeInputBlur}
+              onKeyPress={handleFontSizeInputKeyPress}
+              className="w-8 h-8 flex items-center justify-center text-sm font-semibold bg-white border rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-200"
+              style={{ minWidth: 32 }}
+              title="Font size"
+            />
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleIncreaseFont();
+              }} 
+              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded" 
+              title="Increase font size"
+              type="button"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+          </div>
+          {/* Bold */}
+          <button onClick={handleBold} title="Bold" className={cn("w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 font-bold text-base", isMarkActive('bold') ? 'text-blue-700 bg-blue-50' : '')}>B</button>
+          {/* Italic */}
+          <button onClick={handleItalic} title="Italic" className={cn("w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 italic text-base", isMarkActive('italic') ? 'text-blue-700 bg-blue-50' : '')}>/</button>
+          {/* Underline */}
+          <button onClick={handleUnderline} title="Underline" className={cn("w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 underline text-base", isMarkActive('underline') ? 'text-blue-700 bg-blue-50' : '')}>U</button>
+          {/* Text color palette button */}
+          <button
+            ref={colorBtnRef}
+            title="Text color"
+            className="w-8 h-8 flex flex-col items-center justify-center hover:bg-gray-100 rounded relative"
+            onClick={() => setColorDropdownOpen(v => !v)}
+            style={{ position: 'relative' }}
+          >
+            <span className="font-bold text-base leading-none" style={{ color: '#183153' }}>A</span>
+            <span className="block w-4 h-0.5 rounded-full mt-0.5" style={{ background: currentColor }}></span>
+          </button>
+          {/* Color palette dropdown */}
+          {colorDropdownOpen && typeof window !== 'undefined' && createPortal(
+            <div
+              ref={colorDropdownRef}
+              className="fixed bg-white rounded-md shadow-lg border border-gray-200 z-[999999] p-2"
+              style={{
+                left: colorDropdownPos.left,
+                top: colorDropdownPos.top,
+                transform: 'translateX(-50%)',
+                minWidth: 180
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                {COLOR_PALETTE.map((row, i) => (
+                  <div key={i} className="flex flex-row gap-1">
+                    {row.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          if (editor) editor.chain().focus().setColor(color).run();
+                          setColorDropdownOpen(false);
+                        }}
+                        className="w-6 h-6 rounded-full border border-gray-200 hover:border-black focus:outline-none"
+                        style={{ background: color }}
+                        title={color}
+                        aria-label={color}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>,
+            document.body
+          )}
+          {/* Highlight color palette button */}
+          <button
+            ref={highlightBtnRef}
+            title="Highlight color"
+            className="w-8 h-8 flex flex-col items-center justify-center hover:bg-gray-100 rounded relative ml-1"
+            onClick={() => setHighlightDropdownOpen(v => !v)}
+            style={{ position: 'relative' }}
+          >
+            <PaintBrushIcon className="h-5 w-5" style={{ color: '#183153' }} />
+            <span className="block w-4 h-0.5 rounded-full mt-0.5" style={{ background: currentHighlight }}></span>
+          </button>
+          {/* Highlight palette dropdown */}
+          {highlightDropdownOpen && typeof window !== 'undefined' && createPortal(
+            <div
+              ref={highlightDropdownRef}
+              className="fixed bg-white rounded-md shadow-lg border border-gray-200 z-[999999] p-2"
+              style={{
+                left: highlightDropdownPos.left,
+                top: highlightDropdownPos.top,
+                transform: 'translateX(-50%)',
+                minWidth: 180
+              }}
+            >
+              <div className="flex flex-col gap-1">
+                {COLOR_PALETTE.map((row, i) => (
+                  <div key={i} className="flex flex-row gap-1">
+                    {row.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          if (editor) editor.chain().focus().toggleMark('highlight', { color }).run();
+                          setHighlightDropdownOpen(false);
+                        }}
+                        className="w-6 h-6 rounded-full border border-gray-200 hover:border-black focus:outline-none"
+                        style={{ background: color }}
+                        title={color}
+                        aria-label={color}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>,
+            document.body
+          )}
+          {/* Alignment dropdown */}
+          <div className="relative">
+            <button
+              ref={alignBtnRef}
+              onClick={handleAlignClick}
+              title="Text alignment"
+              className={`w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded relative${!editor ? ' opacity-50' : ''}`}
+              disabled={!editor}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <rect x="1" y="2" width="16" height="1.2" rx="0.6" fill="#183153" />
+                <rect x="1" y="5" width="12" height="1.2" rx="0.6" fill="#183153" />
+                <rect x="1" y="8" width="18" height="1.2" rx="0.6" fill="#183153" />
+                <rect x="1" y="11" width="14" height="1.2" rx="0.6" fill="#183153" />
+                <rect x="1" y="14" width="15" height="1.2" rx="0.6" fill="#183153" />
+              </svg>
+              <span className="absolute bottom-0.5 right-0.5 pointer-events-none">
+                <ChevronDownIcon className="h-2.5 w-2.5 text-gray-600" />
+              </span>
+            </button>
+          </div>
+          {alignDropdown}
+          {/* Line & Paragraph Spacing */}
+          <div className="relative">
+            <button
+              ref={spacingBtnRef}
+              title="Line & Paragraph Spacing"
+              className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 ml-1"
+              onClick={() => {
+                setSpacingDropdownOpen(v => !v);
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect x="10" y="6" width="12" height="1.7" rx="0.85" fill="#183153" />
+                <rect x="10" y="12" width="12" height="1.7" rx="0.85" fill="#183153" />
+                <rect x="10" y="18" width="12" height="1.7" rx="0.85" fill="#183153" />
+                <path d="M6 6V18" stroke="#183153" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M4.5 7L6 5.5L7.5 7" stroke="#183153" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M4.5 17L6 18.5L7.5 17" stroke="#183153" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </button>
+            {spacingDropdownOpen && typeof window !== 'undefined' && createPortal(
+              <>
+                <div
+                  ref={spacingDropdownRef}
+                  className="fixed bg-white rounded-lg shadow-lg border border-gray-200 z-[999999] py-2 px-0 text-sm select-none"
+                  style={{
+                    left: spacingBtnRef.current ? spacingBtnRef.current.getBoundingClientRect().left : 0,
+                    top: spacingBtnRef.current ? spacingBtnRef.current.getBoundingClientRect().bottom + 4 : 0,
+                    minWidth: 160,
+                    pointerEvents: 'auto',
+                    zIndex: 999999,
+                    transform: 'translateX(0%)',
+                  }}
+                >
+                  {lineSpacingOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setLineSpacing(opt.value);
+                        setSpacingDropdownOpen(false);
+                      }}
+                      className={`
+                        w-full text-left px-4 py-1 hover:bg-gray-100 ${lineSpacing === opt.value ? 'bg-blue-50 text-blue-700' : ''}
+                      `}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            , document.body)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
