@@ -29,7 +29,7 @@ import { useUserStore } from '@/app/store/useUserStore'
 import { countWords, countCharacters, calculateReadingTime } from '@/app/lib/utils'
 import Toolbar from './Toolbar'
 import AIBubbleMenu from './AIBubbleMenu'
-import { LineHeight } from '../client-lib/line-height'
+
 import { franc } from 'franc-min'
 import NSpell from 'nspell'
 import { createPortal } from 'react-dom'
@@ -946,7 +946,6 @@ export default function PaginatedEditor({
           content: 'inline*',
         },
       }),
-      LineHeight,
       CharacterCount,
       Placeholder.configure({
         placeholder,
