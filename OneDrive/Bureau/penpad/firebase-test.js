@@ -1,0 +1,14 @@
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+
+const adminConfig = {
+  projectId: 'pennpad-9e47b',
+  privateKey: `-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCsuH/jjyNdXddn\nZlRv11BLKMAOUnZL9XstPbwyoM58EQKIXnDmAIImXZfKN3t7gWmFebKjnSFAce2z\nIxqCUx0m9vCZ6hd2NkrT7SYBM0gyw1QcOxOZcdbr6s3MhYoVr+ciOQN9bQekxueU\ngx/lU3gGuhqxq2u7UI2dJ+FonFAPEdQs7Oj6JrFLlvwLd3zYkPFamcO5E31q9Yap\nN6eejZWCsGm5Ypr5koPAi17eskGw4yZzbtJSvya7AhF75PHHLy8Hs6xIRAZzTEdG\na6Ea76J1FhN1j/y6PyNbuwfUM51hMZKWnpTikY6JCv1Q8BrVdI6D97eWYKfiFcJg\nE7HE1pBTAgMBAAECggEAGRs53nkdrzex1PeR9IPmyatjEhyN0jLHtJF8ZsZAiCuX\neP0etMAu1abV0UYerprmx3POMhboEMxpZ0MGBRr8aiqLr257Tz/1wTfVRhK56ZnC\nWIGEiCcnvOPvsE1aVMFcpqPaTFlp5Vt9qXUkphrA9VwIqfonTx4Wx65WsfRuyrxp\nN27CvjwmIG0dcgAjLESOLvELa9VkWIKXmU2ySUldWPBAw9vwa3TNXgNrtOQW6AvI\nxMrIgP48jbgr5i8Kdc2jiXR3uG/y6hi1JY7M9AWbxFY8491xGPWctDfTPPEHwven\nxbkIIoMzn/55KBapQqhUlBUVmqN32iF2h8rGPKYj2QKBgQDZNtNCpCSfN6cx7iRg\nHxzsluTc2nzpnQlxMKuL+BWQZdlnmBzMI6qDazMcki73ECPSwmeNqFAFfPpWU1DV\nyCw8Qdch5H1i1MEV9WVmVVck88ub9ntfRp0v7aAO6MbnFyT/T0TzUvnYqcDjQ6oa\nSzNTEPnTXzUu9ZAF3LR969BghQKBgQDLj9BMy6/0jlYNoATINREYrEInYrWQ4Lwh\nehbKw2uYvDKk0wbdOpM2kVuLhOOAej8xbAx91JPndTUlxYbX/nitoF+qo8cxqwpy\ndUuQ12yV7MzZD2NPDX8h+DMnlg9q223ctALqiHQL4xW49DlPCT/GVcWnq12/TklT\niCo8PRaw9wKBgGgZ53vr0QVhlcbPPC25G5Kj6sGSEQWhVnIiAkVNu3/94AjPFRYd\nDc54JQHPaaTM3m5W72wru1Y2BIA04+vhSJoEcAd1S0Z/cp6Egnld8yrpkK6Jna0W\n2aSrvOcIVrNQG1Ik+oWnQci96ozA1BhP7CQmYaUU3xdHZyP4F6S1zKNFAoGBAISV\n0TiT2rFRHB+XwEWeutn1KMl6c4Q/vImZecrraeN7gQj2IhxqEISUPKotDfkapppM\nI/65PPSe1NUbSO7aYkPEl0sPjah+HTnbyDI4/hLQv8QJT8enpMy9WqRICxawgWgl\nH1kfM2aiq/1hpQojnhRSvYCuD0uRdBUiNVAzAdqVAoGAQesjOEe9cUrF04zYPo2h\nE15ECWfoTtVG4IFysElUGaxJK7qof5gi09zsRAzLDJF73dwEp5DnO5fGX6mttcf+\nnhfXOH5q13CbSegq8eoxX7oGLuQ9RIsp0n8XarsBymtt3gKvuVwMmTUFCChsGXlk\n4vsonWPOM/d1g/nwZTSCG3E=\n-----END PRIVATE KEY-----\n`,
+  clientEmail: 'firebase-adminsdk-fbsvc@pennpad-9e47b.iam.gserviceaccount.com',
+};
+
+initializeApp({ credential: cert(adminConfig) });
+
+getAuth().listUsers(1)
+  .then(() => console.log('Firebase connection: SUCCESS'))
+  .catch(err => console.error('Firebase connection: ERROR', err)); 

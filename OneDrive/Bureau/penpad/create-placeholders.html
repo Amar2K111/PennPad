@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Placeholder Images</title>
+</head>
+<body>
+    <h1>Creating Placeholder Images...</h1>
+    <canvas id="aiCanvas" width="600" height="400" style="border: 1px solid #ccc; margin: 10px;"></canvas>
+    <canvas id="goalsCanvas" width="600" height="400" style="border: 1px solid #ccc; margin: 10px;"></canvas>
+    
+    <script>
+        // Create AI Features placeholder
+        const aiCanvas = document.getElementById('aiCanvas');
+        const aiCtx = aiCanvas.getContext('2d');
+        
+        // Blue gradient background
+        const aiGradient = aiCtx.createLinearGradient(0, 0, 600, 400);
+        aiGradient.addColorStop(0, '#3B82F6');
+        aiGradient.addColorStop(1, '#1D4ED8');
+        aiCtx.fillStyle = aiGradient;
+        aiCtx.fillRect(0, 0, 600, 400);
+        
+        // White text
+        aiCtx.fillStyle = 'white';
+        aiCtx.font = 'bold 24px Arial';
+        aiCtx.textAlign = 'center';
+        aiCtx.fillText('AI Features Screenshot', 300, 200);
+        aiCtx.font = '16px Arial';
+        aiCtx.fillText('Replace with your actual screenshot', 300, 230);
+        
+        // Create Daily Goals placeholder
+        const goalsCanvas = document.getElementById('goalsCanvas');
+        const goalsCtx = goalsCanvas.getContext('2d');
+        
+        // Purple gradient background
+        const goalsGradient = goalsCtx.createLinearGradient(0, 0, 600, 400);
+        goalsGradient.addColorStop(0, '#8B5CF6');
+        goalsGradient.addColorStop(1, '#7C3AED');
+        goalsCtx.fillStyle = goalsGradient;
+        goalsCtx.fillRect(0, 0, 600, 400);
+        
+        // White text
+        goalsCtx.fillStyle = 'white';
+        goalsCtx.font = 'bold 24px Arial';
+        goalsCtx.textAlign = 'center';
+        goalsCtx.fillText('Daily Goals Screenshot', 300, 200);
+        goalsCtx.font = '16px Arial';
+        goalsCtx.fillText('Replace with your actual screenshot', 300, 230);
+        
+        // Download functions
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Add download buttons
+        const aiButton = document.createElement('button');
+        aiButton.textContent = 'Download AI Features Placeholder';
+        aiButton.onclick = () => downloadCanvas(aiCanvas, 'ai-features-screenshot.png');
+        document.body.appendChild(aiButton);
+        
+        const goalsButton = document.createElement('button');
+        goalsButton.textContent = 'Download Daily Goals Placeholder';
+        goalsButton.onclick = () => downloadCanvas(goalsCanvas, 'daily-goals-screenshot.png');
+        document.body.appendChild(goalsButton);
+    </script>
+</body>
+</html> 
