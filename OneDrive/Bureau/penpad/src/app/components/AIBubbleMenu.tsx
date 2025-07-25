@@ -120,7 +120,7 @@ export default function AIBubbleMenu({
     }
   };
 
-  const handleRewriteClick = (event) => {
+  const handleRewriteClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
     console.log('🔘 Rewrite button clicked!');
@@ -141,7 +141,7 @@ export default function AIBubbleMenu({
     return false;
   };
 
-  const handleRewriteSubmit = async (event) => {
+  const handleRewriteSubmit = async (event?: React.FormEvent) => {
     if (event) {
       event.stopPropagation();
       event.preventDefault();
