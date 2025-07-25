@@ -34,9 +34,9 @@ export default function SignUpPage() {
         id: user.uid,
         email: user.email || '',
         displayName: user.displayName || user.email || '',
-        photoURL: user.photoURL || '',
-        emailVerified: user.emailVerified,
+        isPremium: false,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        lastLoginAt: new Date(),
       })
       // Set session cookie
       const idToken = await user.getIdToken();
@@ -75,9 +75,9 @@ export default function SignUpPage() {
         id: user.uid,
         email: user.email || '',
         displayName: user.displayName || user.email || '',
-        photoURL: user.photoURL || '',
-        emailVerified: user.emailVerified,
+        isPremium: false,
         createdAt: new Date(user.metadata.creationTime || Date.now()),
+        lastLoginAt: new Date(),
       })
       // Set session cookie
       const idToken = await user.getIdToken();
