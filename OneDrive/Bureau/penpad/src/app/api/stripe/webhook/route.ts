@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { collection, query, where, getDocs, updateDoc, serverTimestamp } from 'firebase-admin/firestore';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-08-16',
@@ -57,9 +56,9 @@ export async function POST(req: Request) {
 
     try {
       // console.log('Searching for user with email:', customerEmail);
-      const usersRef = collection(adminDb, 'users');
-      const q = query(usersRef, where('email', '==', customerEmail));
-      const querySnapshot = await getDocs(q);
+      const usersRef = adminDb.collection('users');
+      const q = usersRef.where('email', '==', customerEmail);
+      const querySnapshot = await q.get();
 
       // console.log('Query result - found documents:', querySnapshot.size);
 
@@ -68,16 +67,16 @@ export async function POST(req: Request) {
         // console.log('Found user document:', userDoc.id);
         // console.log('User data:', userDoc.data());
 
-        await updateDoc(userDoc.ref, {
+        await userDoc.ref.update({
           isPremium: true,
           stripeCustomerId: session.customer,
-          updatedAt: serverTimestamp(),
+          updatedAt: adminDb.FieldValue.serverTimestamp(),
         });
 
         // console.log('User updated to isPremium: true and stripeCustomerId:', session.customer);
       } else {
         // console.log('Available users in database:');
-        const allUsers = await getDocs(usersRef);
+        const allUsers = await usersRef.get();
         allUsers.forEach(doc => {
           // console.log('User:', doc.data());
         });
