@@ -39,17 +39,6 @@ const LexicalToolbar = React.memo(({
   // Always call the hook at the top level
   const editor = useLexicalComposerContext()
   
-  // If no editor context, return basic toolbar
-  if (!editor) {
-    return (
-      <div className="flex items-center gap-1 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 ml-auto">
-          {totalWordCount} words
-        </div>
-      </div>
-    )
-  }
-
   // Update toolbar state based on selection
   useEffect(() => {
     if (!editor) return
@@ -133,6 +122,17 @@ const LexicalToolbar = React.memo(({
       })
     }
   }, [editor, fontSize])
+  
+  // If no editor context, return basic toolbar
+  if (!editor) {
+    return (
+      <div className="flex items-center gap-1 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div className="text-sm text-gray-600 ml-auto">
+          {totalWordCount} words
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-1 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
