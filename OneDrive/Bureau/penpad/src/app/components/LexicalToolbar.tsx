@@ -36,19 +36,11 @@ const LexicalToolbar = React.memo(({
   const [isUnderline, setIsUnderline] = useState(false)
   const [fontSize, setFontSize] = useState(15)
   
-  let editor: any = null
-  let hasLexicalContext = false
+  // Always call the hook at the top level
+  const editor = useLexicalComposerContext()
   
-  try {
-    editor = useLexicalComposerContext()
-    hasLexicalContext = true
-  } catch (error) {
-    console.warn('LexicalToolbar: Not in LexicalComposer context')
-    hasLexicalContext = false
-  }
-  
-  if (!hasLexicalContext) {
-    // Return a basic toolbar without Lexical-specific functionality
+  // If no editor context, return basic toolbar
+  if (!editor) {
     return (
       <div className="flex items-center gap-1 p-2 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-sm text-gray-600 ml-auto">
