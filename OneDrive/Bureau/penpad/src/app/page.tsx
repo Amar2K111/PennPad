@@ -5,13 +5,6 @@ import Link from 'next/link'
 import { ArrowRightIcon, SparklesIcon, CheckCircleIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 
 export default function HomePage() {
-  // const [email, setEmail] = useState('')
-
-  const handleGetStarted = (e: React.FormEvent) => {
-    e.preventDefault()
-    // TODO: Implement signup flow
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Navigation */}
@@ -49,7 +42,7 @@ export default function HomePage() {
             and real-time collaboration to help you create exceptional content.
           </p>
           
-          <form onSubmit={handleGetStarted} className="max-w-md mx-auto mb-12">
+          <div className="max-w-md mx-auto mb-12">
             <Link href="/auth/signup" className="w-full">
               <button
                 type="button"
@@ -59,24 +52,10 @@ export default function HomePage() {
                 <ArrowRightIcon className="ml-2 h-5 w-5" />
               </button>
             </Link>
-          </form>
+          </div>
         </div>
 
-        {/* Screenshots Section - Now in the middle */}
-        <div className="mt-20">
-          
-                      <div className="flex justify-center">
-              {/* AI Features Screenshot - Centered and Bigger */}
-              <img 
-                src="/ai-features-screenshot.png" 
-                alt="AI Writing Features" 
-                className="rounded-lg shadow-lg"
-                style={{ maxWidth: '90%', height: 'auto', objectFit: 'contain' }}
-              />
-            </div>
-        </div>
-
-        {/* Features Grid - Now at the bottom, back to 3 columns */}
+        {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8 mt-20">
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
             <SparklesIcon className="h-12 w-12 text-blue-600 mb-4" />
@@ -98,9 +77,10 @@ export default function HomePage() {
           
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
             <UserGroupIcon className="h-12 w-12 text-purple-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-3">Daily Writing Goals</h3>
+            <h3 className="text-xl font-semibold mb-3">Real-time Collaboration</h3>
             <p className="text-gray-600">
-              Stay consistent and motivated by setting daily writing goals. Track your progress, build lasting habits, and celebrate your achievements every day.
+              Work together with your team in real-time, 
+              with live editing and commenting features.
             </p>
           </div>
         </div>
