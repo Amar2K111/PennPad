@@ -6,7 +6,6 @@ import StarterKit from '@tiptap/starter-kit'
 import CharacterCount from '@tiptap/extension-character-count'
 import Color from '@tiptap/extension-color'
 import FontFamily from '@tiptap/extension-font-family'
-import FontSize from '@tiptap/extension-font-size'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
@@ -960,27 +959,6 @@ export default function PaginatedEditor({
       TextStyle.configure({
         HTMLAttributes: {
           class: 'text-style',
-        },
-      }),
-      FontSize.configure({
-        types: ['textStyle'],
-        defaultFontSize: '14px',
-        preserveMarks: true,
-        addAttributes() {
-          return {
-            fontSize: {
-              default: '14px',
-              parseHTML: element => element.style.fontSize,
-              renderHTML: attributes => {
-                if (!attributes.fontSize) {
-                  return {}
-                }
-                return {
-                  style: `font-size: ${attributes.fontSize}`,
-                }
-              },
-            },
-          }
         },
       }),
 
