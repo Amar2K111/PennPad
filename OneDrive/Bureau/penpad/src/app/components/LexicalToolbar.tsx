@@ -31,6 +31,11 @@ const LexicalToolbar = React.memo(({
   canUndo = true, 
   canRedo = true 
 }: LexicalToolbarProps) => {
+  const [isBold, setIsBold] = useState(false)
+  const [isItalic, setIsItalic] = useState(false)
+  const [isUnderline, setIsUnderline] = useState(false)
+  const [fontSize, setFontSize] = useState(15)
+  
   let editor: any = null
   
   try {
@@ -46,11 +51,6 @@ const LexicalToolbar = React.memo(({
       </div>
     )
   }
-  
-  const [isBold, setIsBold] = useState(false)
-  const [isItalic, setIsItalic] = useState(false)
-  const [isUnderline, setIsUnderline] = useState(false)
-  const [fontSize, setFontSize] = useState(15)
 
   // Update toolbar state based on selection
   useEffect(() => {
