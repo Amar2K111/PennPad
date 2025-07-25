@@ -45,6 +45,11 @@ export interface UserStore {
   settings: UserSettings
   isAuthenticated: boolean
   isLoading: boolean
+  setUser: (user: User | null) => void
+  setSettings: (settings: Partial<UserSettings>) => void
+  setLoading: (isLoading: boolean) => void
+  updateUser: (updates: Partial<User>) => void
+  logout: () => void
 }
 
 export interface EditorStore {
