@@ -24,7 +24,8 @@ export const LineHeight = Extension.create({
   addCommands() {
     return {
       setLineHeight: (lineHeight: string) => ({ commands }) => {
-        return commands.updateAttributes('paragraph', { style: `line-height: ${lineHeight};` })
+        commands.updateAttributes('paragraph', { style: `line-height: ${lineHeight};` })
+        return true
       },
     }
   },
