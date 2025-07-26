@@ -9,38 +9,60 @@ import type { Document } from '@/types';
 import Link from 'next/link';
 
 export default function DashboardPage() {
+  // All hooks must be called in the same order every time
   const user = useUserStore((state) => state.user);
-  const avatarLetter = user?.email ? user.email[0].toUpperCase() : 'A';
-  const displayName = user?.displayName || 'User';
-  const email = user?.email || '';
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  const router = useRouter();
   const isAuthenticated = useUserStore((state) => state.isAuthenticated);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { showToast } = useToast();
+  
+  // Authentication hook
+  useAuthRestore(setLoading);
+  
+  // All other state hooks
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameDocId, setRenameDocId] = useState<string | null>(null);
-  const inputRenameRef = useRef<HTMLInputElement>(null);
   const [renameLoading, setRenameLoading] = useState(false);
-  const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
-  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const [creatingDoc, setCreatingDoc] = useState(false);
   const [clickedDocId, setClickedDocId] = useState<string | null>(null);
+  
+  // All ref hooks
+  const dropdownRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const inputRenameRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Computed values
+  const avatarLetter = user?.email ? user.email[0].toUpperCase() : 'A';
+  const displayName = user?.displayName || 'User';
+  const email = user?.email || '';
 
-  useAuthRestore(setLoading);
-
+  // Authentication effect - must come after all hooks
   useEffect(() => {
+    // Only redirect if we're done loading and still not authenticated
     if (!loading && !isAuthenticated) {
       router.replace('/auth/signin');
     }
   }, [loading, isAuthenticated, router]);
+
+  // Show loading screen while authentication is being restored
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="text-blue-600 font-medium text-lg">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -60,17 +82,22 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    async function fetchDocuments() {
-      const res = await fetch('/api/documents');
-      if (res.ok) {
-        const data = await res.json();
-        // Only show documents that are not deleted
-        setDocuments((data.documents || []).filter((doc: Document) => !doc.isDeleted));
-      }
+  // Define fetchDocuments before using it in useEffect
+  const fetchDocuments = async () => {
+    const res = await fetch('/api/documents');
+    if (res.ok) {
+      const data = await res.json();
+      // Only show documents that are not deleted
+      setDocuments((data.documents || []).filter((doc: Document) => !doc.isDeleted));
     }
-    fetchDocuments();
-  }, []);
+  };
+
+  useEffect(() => {
+    // Only fetch documents when user is authenticated and not loading
+    if (!loading && isAuthenticated) {
+      fetchDocuments();
+    }
+  }, [loading, isAuthenticated]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -120,6 +147,8 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (data && data.id) {
+        // Refresh documents list after creating new document
+        await fetchDocuments();
         router.push(`/document/${data.id}`);
       } else {
         showToast('Failed to create new document', 'error', 3000);
@@ -226,16 +255,7 @@ export default function DashboardPage() {
     setHighlightedIndex(filteredDocuments.length > 0 ? 0 : -1);
   }, [searchQuery, filteredDocuments.length]);
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="text-blue-600 font-medium text-lg">Loading...</span>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-white">

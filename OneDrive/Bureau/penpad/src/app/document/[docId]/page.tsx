@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Toolbar from '../../components/Toolbar';
 import PaginatedEditor from '../../components/PaginatedEditor';
 import { useEditorStore } from '@/app/store/useEditorStore';
+import { useUserStore } from '@/app/store/useUserStore';
+import { useAuthRestore } from '@/app/store/useAuthRestore';
 import { Bars3Icon, DocumentTextIcon, EllipsisVerticalIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import './chapterListScroll.css';
 import Toast from '../../components/Toast';
@@ -28,6 +30,24 @@ interface Note {
 }
 
 export default function DocumentPage() {
+  // Authentication checks - must be at the very top
+  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
+  const [authLoading, setAuthLoading] = useState(true);
+  
+  useAuthRestore(setAuthLoading);
+  
+  // Show loading while authentication is being restored
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="text-blue-600 font-medium text-lg">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
   // Place these hooks at the very top, before any logic or other hooks
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [pages, setPages] = useState<string[]>(['']);
