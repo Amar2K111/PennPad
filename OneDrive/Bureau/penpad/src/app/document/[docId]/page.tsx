@@ -811,14 +811,13 @@ export default function DocumentPage() {
         const data = JSON.parse(text);
         setTitle(data.title === 'Untitled document' ? '' : data.title || '');
         setDocLoaded(true);
-        setIsDataLoaded(true);
+        // Don't set isDataLoaded here - wait for chapters to load
         setIsLoading(false);
       })
       .catch(err => {
         console.error('Failed to load document:', err);
         setTitle('');
         setDocLoaded(true);
-        setIsDataLoaded(true);
         setIsLoading(false);
       });
   }, [docId]);
@@ -827,11 +826,14 @@ export default function DocumentPage() {
   useEffect(() => {
     if (!docId || docId === 'new' || !docLoaded) return;
     
+    console.log('🔄 Loading chapters for document:', docId);
+    
     fetch(`/api/chapters?documentId=${docId}`)
       .then(res => res.json())
       .then(data => {
         const chaptersArray = Array.isArray(data) ? data : [];
         console.log('📚 Loaded chapters:', chaptersArray.length);
+        console.log('📚 Chapters data:', chaptersArray);
         
         // Validate that we don't have duplicate chapters
         const uniqueChapters = chaptersArray.filter((chapter, index, self) => 
@@ -842,19 +844,26 @@ export default function DocumentPage() {
           console.warn('⚠️ Duplicate chapters detected, filtering...');
         }
         
+        console.log('📚 Setting chapters state:', uniqueChapters);
         setChapters(uniqueChapters);
         
         // Set initial chapter if none selected
         if (uniqueChapters.length > 0 && !currentChapterId) {
+          console.log('📚 Setting initial chapter:', uniqueChapters[0].id);
           setCurrentChapterIdWithPersistence(uniqueChapters[0].id);
         }
         
         setIsInitialLoadComplete(true);
+        // Now set isDataLoaded to true since both document and chapters are loaded
+        console.log('✅ Setting isDataLoaded to true');
+        setIsDataLoaded(true);
       })
       .catch(err => {
         console.error('Failed to load chapters:', err);
         setChapters([]);
         setIsInitialLoadComplete(true);
+        // Set isDataLoaded even if chapters fail to load
+        setIsDataLoaded(true);
       });
   }, [docId, docLoaded, currentChapterId]);
 
@@ -1534,82 +1543,89 @@ export default function DocumentPage() {
         {activeTab === 'chapter' && (
           <div className="mt-2 w-full" style={{ width: '270px' }}>
             <div className="space-y-1 max-h-[520px] overflow-y-auto chapter-list-scroll pr-0">
-              {chapters.map((chapter, idx) => (
-                <div
-                  key={chapter.id}
-                  className={`p-4 rounded-2xl transition-all duration-200 relative group cursor-pointer ${
-                    currentChapterId === chapter.id
-                      ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 shadow-sm'
-                      : 'hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent'
-                  }`}
-                  onClick={() => handleChapterClick(chapter.id)}
-                  style={{ minHeight: '60px' }}
-                >
-                    {editingItemId === chapter.id ? (
-                      // Inline editing mode
-                      <div className="flex-1 mr-3">
-                        <input
-                          type="text"
-                          value={editingItemTitle}
-                          onChange={(e) => setEditingItemTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleRenameSubmit();
-                            } else if (e.key === 'Escape') {
-                              e.preventDefault();
-                              handleRenameCancel();
-                            }
-                          }}
-                          onBlur={handleRenameBlur}
-                          className="w-full text-base font-medium text-gray-800 bg-transparent border border-blue-300 rounded-sm outline-none focus:outline-none focus:border-blue-500"
-                          style={{ 
-                            padding: '1px 2px',
-                            margin: '0',
-                            height: 'auto',
-                            minHeight: '0',
-                            lineHeight: 'inherit'
-                          }}
-                          data-editing-id={chapter.id}
-                        />
-                      </div>
-                    ) : (
-                      // Normal display mode
-                      <div className="flex items-center" style={{ marginRight: '40px' }}>
-                        <DocumentTextIcon className="h-5 w-5 text-blue-500 mr-3" style={{ marginLeft: '8px' }} />
-                        <span 
-                          className="text-lg font-medium truncate text-blue-700"
-                          style={{ marginLeft: '8px' }}
-                        >
-                        {chapter.title || `Chapter ${idx + 1}`}
-                    </span>
-                      </div>
-                    )}
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const menuHeight = 80; // Approximate height of the menu
-                            const windowHeight = window.innerHeight;
-                            const spaceBelow = windowHeight - rect.bottom;
-                            const spaceAbove = rect.top;
-                            
-                            // Determine if menu should open up or down
-                            const shouldOpenUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
-                            
-                            setOpenChapterMenuId(chapter.id);
-                            setChapterPopupPosition({ 
-                              x: e.clientX, 
-                              y: shouldOpenUp ? rect.top - menuHeight : e.clientY 
-                            });
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors opacity-0 group-hover:opacity-100"
-                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}
-                        >
-                          <EllipsisVerticalIcon className="h-5 w-5" />
-                        </button>
+              {console.log('🎨 Rendering chapters:', chapters.length, chapters)}
+              {chapters.length === 0 ? (
+                <div className="p-4 text-gray-500 text-center">
+                  {isDataLoaded ? 'No chapters yet' : 'Loading chapters...'}
                 </div>
-              ))}
+              ) : (
+                chapters.map((chapter, idx) => (
+                  <div
+                    key={chapter.id}
+                    className={`p-4 rounded-2xl transition-all duration-200 relative group cursor-pointer ${
+                      currentChapterId === chapter.id
+                        ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 shadow-sm'
+                        : 'hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent'
+                    }`}
+                    onClick={() => handleChapterClick(chapter.id)}
+                    style={{ minHeight: '60px' }}
+                  >
+                      {editingItemId === chapter.id ? (
+                        // Inline editing mode
+                        <div className="flex-1 mr-3">
+                          <input
+                            type="text"
+                            value={editingItemTitle}
+                            onChange={(e) => setEditingItemTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleRenameSubmit();
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                handleRenameCancel();
+                              }
+                            }}
+                            onBlur={handleRenameBlur}
+                            className="w-full text-base font-medium text-gray-800 bg-transparent border border-blue-300 rounded-sm outline-none focus:outline-none focus:border-blue-500"
+                            style={{ 
+                              padding: '1px 2px',
+                              margin: '0',
+                              height: 'auto',
+                              minHeight: '0',
+                              lineHeight: 'inherit'
+                            }}
+                            data-editing-id={chapter.id}
+                          />
+                        </div>
+                      ) : (
+                        // Normal display mode
+                        <div className="flex items-center" style={{ marginRight: '40px' }}>
+                          <DocumentTextIcon className="h-5 w-5 text-blue-500 mr-3" style={{ marginLeft: '8px' }} />
+                          <span 
+                            className="text-lg font-medium truncate text-blue-700"
+                            style={{ marginLeft: '8px' }}
+                          >
+                          {chapter.title || `Chapter ${idx + 1}`}
+                      </span>
+                        </div>
+                      )}
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuHeight = 80; // Approximate height of the menu
+                              const windowHeight = window.innerHeight;
+                              const spaceBelow = windowHeight - rect.bottom;
+                              const spaceAbove = rect.top;
+                              
+                              // Determine if menu should open up or down
+                              const shouldOpenUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                              
+                              setOpenChapterMenuId(chapter.id);
+                              setChapterPopupPosition({ 
+                                x: e.clientX, 
+                                y: shouldOpenUp ? rect.top - menuHeight : e.clientY 
+                              });
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                          >
+                            <EllipsisVerticalIcon className="h-5 w-5" />
+                          </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
