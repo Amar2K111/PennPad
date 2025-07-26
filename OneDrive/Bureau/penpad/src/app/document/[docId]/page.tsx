@@ -754,6 +754,45 @@ export default function DocumentPage() {
       });
   }, [currentNoteId, activeTab]);
 
+  // Content loading optimization
+  const contentLoadingRef = useRef(new Set<string>());
+  const contentCache = useRef(new Map<string, string>());
+  
+  // Load content with caching
+  const loadContent = useCallback(async (id: string, type: 'chapter' | 'note') => {
+    // Check if already loading
+    if (contentLoadingRef.current.has(id)) return;
+    
+    // Check cache first
+    const cached = contentCache.current.get(id);
+    if (cached) {
+      setContent(cached);
+      return;
+    }
+    
+    // Mark as loading
+    contentLoadingRef.current.add(id);
+    
+    try {
+      const response = await fetch(`/api/${type}s/${id}?documentId=${docId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.content || '';
+        
+        // Cache the content
+        contentCache.current.set(id, content);
+        setContent(content);
+        
+        // Update last saved content
+        lastSavedContent.current.set(id, content);
+      }
+    } catch (error) {
+      console.error(`Failed to load ${type} content:`, error);
+    } finally {
+      contentLoadingRef.current.delete(id);
+    }
+  }, [docId]);
+
   // Optimized click handlers for chapters and notes
   const handleChapterClick = useCallback(async (chapterId: string) => {
     // Save current content before switching
@@ -773,7 +812,7 @@ export default function DocumentPage() {
     const cachedContent = contentCache.current.get(chapterId) || '';
     const newPages = splitContentIntoPages(cachedContent);
     setPages(newPages);
-  }, [content, activeTab, currentChapterId, currentNoteId, loadContent, splitContentIntoPages]);
+  }, [content, activeTab, currentChapterId, currentNoteId, splitContentIntoPages]);
   
   const handleNoteClick = useCallback(async (noteId: string) => {
     // Save current content before switching
@@ -793,7 +832,7 @@ export default function DocumentPage() {
     const cachedContent = contentCache.current.get(noteId) || '';
     const newPages = splitContentIntoPages(cachedContent);
     setPages(newPages);
-  }, [content, activeTab, currentChapterId, currentNoteId, loadContent, splitContentIntoPages]);
+  }, [content, activeTab, currentChapterId, currentNoteId, splitContentIntoPages]);
 
   // Load document and chapters
   useEffect(() => {
@@ -1186,45 +1225,6 @@ export default function DocumentPage() {
         });
     }
   }, [docId, router]);
-
-  // Content loading optimization
-  const contentLoadingRef = useRef(new Set<string>());
-  const contentCache = useRef(new Map<string, string>());
-  
-  // Load content with caching
-  const loadContent = useCallback(async (id: string, type: 'chapter' | 'note') => {
-    // Check if already loading
-    if (contentLoadingRef.current.has(id)) return;
-    
-    // Check cache first
-    const cached = contentCache.current.get(id);
-    if (cached) {
-      setContent(cached);
-      return;
-    }
-    
-    // Mark as loading
-    contentLoadingRef.current.add(id);
-    
-    try {
-      const response = await fetch(`/api/${type}s/${id}?documentId=${docId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const content = data.content || '';
-        
-        // Cache the content
-        contentCache.current.set(id, content);
-        setContent(content);
-        
-        // Update last saved content
-        lastSavedContent.current.set(id, content);
-      }
-    } catch (error) {
-      console.error(`Failed to load ${type} content:`, error);
-    } finally {
-      contentLoadingRef.current.delete(id);
-    }
-  }, [docId]);
 
   if (creatingNewDoc) {
     return (
