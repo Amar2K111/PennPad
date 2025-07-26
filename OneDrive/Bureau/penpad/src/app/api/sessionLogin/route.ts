@@ -23,15 +23,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing ID token' }, { status: 400 });
     }
 
-    // Create session cookie
+    // Create session cookie - expires when browser/tab is closed
     const sessionCookie = await auth.createSessionCookie(idToken, {
-      expiresIn: 60 * 60 * 24 * 5 * 1000, // 5 days
+      expiresIn: 60 * 60 * 24 * 1000, // 1 day (but will expire when browser closes)
     });
 
     const response = NextResponse.json({ success: true });
     
     response.cookies.set('session', sessionCookie, {
-      maxAge: 60 * 60 * 24 * 5, // 5 days
+      // No maxAge - session cookie that expires when browser closes
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
