@@ -161,7 +161,6 @@ export default function DocumentPage() {
   const chapterContentCache = useRef<Map<string, string>>(new Map());
   // Cache for note content to avoid API calls during switching
   const noteContentCache = useRef<Map<string, string>>(new Map());
-  const lastSavedContent = useRef<Map<string, string>>(new Map());
 
   // Content state - simple like Google Docs
   const [content, setContent] = useState('');
