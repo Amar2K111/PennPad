@@ -28,76 +28,72 @@ export async function POST(req: NextRequest) {
     const decoded = await auth.verifySessionCookie(sessionCookie, true);
     const batchData = await req.json();
     
-    // Process all batch operations
-    const promises = [];
+    // Use Firebase batch writes for better performance
+    const batch = db.batch();
+    const now = new Date();
     
     // Save chapter content
     if (batchData.chapterContent) {
       const { chapterId, content, documentId } = batchData.chapterContent;
-      promises.push(
-        db.collection('users').doc(decoded.uid)
-          .collection('documents').doc(documentId)
-          .collection('chapters').doc(chapterId)
-          .update({
-            content,
-            updatedAt: new Date(),
-          })
-      );
+      const chapterRef = db.collection('users').doc(decoded.uid)
+        .collection('documents').doc(documentId)
+        .collection('chapters').doc(chapterId);
+      
+      batch.update(chapterRef, {
+        content,
+        updatedAt: now,
+      });
     }
     
     // Save note content
     if (batchData.noteContent) {
       const { noteId, content, documentId } = batchData.noteContent;
-      promises.push(
-        db.collection('users').doc(decoded.uid)
-          .collection('documents').doc(documentId)
-          .collection('notes').doc(noteId)
-          .update({
-            content,
-            updatedAt: new Date(),
-          })
-      );
+      const noteRef = db.collection('users').doc(decoded.uid)
+        .collection('documents').doc(documentId)
+        .collection('notes').doc(noteId);
+      
+      batch.update(noteRef, {
+        content,
+        updatedAt: now,
+      });
     }
     
     // Save document title
     if (batchData.documentTitle) {
       const { documentId, title } = batchData.documentTitle;
-      promises.push(
-        db.collection('users').doc(decoded.uid)
-          .collection('documents').doc(documentId)
-          .update({
-            title,
-            updatedAt: new Date(),
-          })
-      );
+      const documentRef = db.collection('users').doc(decoded.uid)
+        .collection('documents').doc(documentId);
+      
+      batch.update(documentRef, {
+        title,
+        updatedAt: now,
+      });
     }
     
-    // Save analytics
-    if (batchData.analytics) {
-      promises.push(
-        db.collection('users').doc(decoded.uid)
-          .collection('analytics').doc('wordTracker')
-          .set({
-            ...batchData.analytics,
-            updatedAt: new Date(),
-          }, { merge: true })
-      );
+    // Save analytics - only if significant data
+    if (batchData.analytics && Object.keys(batchData.analytics).length > 0) {
+      const analyticsRef = db.collection('users').doc(decoded.uid)
+        .collection('analytics').doc('wordTracker');
+      
+      batch.set(analyticsRef, {
+        ...batchData.analytics,
+        updatedAt: now,
+      }, { merge: true });
     }
     
-    // Save spelling settings
-    if (batchData.spelling) {
-      promises.push(
-        db.collection('users').doc(decoded.uid)
-          .collection('settings').doc('spelling')
-          .set({
-            ...batchData.spelling,
-            updatedAt: new Date(),
-          }, { merge: true })
-      );
+    // Save spelling settings - only if significant data
+    if (batchData.spelling && Object.keys(batchData.spelling).length > 0) {
+      const spellingRef = db.collection('users').doc(decoded.uid)
+        .collection('settings').doc('spelling');
+      
+      batch.set(spellingRef, {
+        ...batchData.spelling,
+        updatedAt: now,
+      }, { merge: true });
     }
     
-    // Execute all saves in parallel
-    await Promise.all(promises);
+    // Execute all saves in a single batch operation
+    await batch.commit();
     
     return NextResponse.json({ success: true });
   } catch (error) {

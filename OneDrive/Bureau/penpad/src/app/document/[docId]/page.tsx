@@ -35,11 +35,6 @@ export default function DocumentPage() {
   const [showPageOverview, setShowPageOverview] = useState(false);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Add loading states to prevent race conditions
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
-
   // Function to extract text from HTML content
   const extractTextFromHTML = (htmlContent: string): string => {
     if (!htmlContent) return '';
@@ -205,6 +200,10 @@ export default function DocumentPage() {
     analytics: null,
     spelling: null
   });
+  
+  // Track last saved content to avoid duplicate saves
+  const lastSavedContent = useRef(new Map<string, string>());
+  const lastSavedTitle = useRef<string>('');
 
   // Batch save function - saves everything together
   const batchSave = useCallback(async () => {
@@ -216,37 +215,58 @@ export default function DocumentPage() {
     try {
       const batchData: any = {};
       
-      // Add content changes
+      // Add content changes - only if content actually changed
       if (changes.content && activeTab === 'chapter' && currentChapterId) {
-        batchData.chapterContent = {
-          chapterId: currentChapterId,
-          content: changes.content,
-          documentId: docId
-        };
+        const lastSaved = lastSavedContent.current.get(currentChapterId);
+        if (lastSaved !== changes.content) {
+          batchData.chapterContent = {
+            chapterId: currentChapterId,
+            content: changes.content,
+            documentId: docId
+          };
+          lastSavedContent.current.set(currentChapterId, changes.content);
+        }
       } else if (changes.content && activeTab === 'notes' && currentNoteId) {
-        batchData.noteContent = {
-          noteId: currentNoteId,
-          content: changes.content,
-          documentId: docId
-        };
+        const lastSaved = lastSavedContent.current.get(currentNoteId);
+        if (lastSaved !== changes.content) {
+          batchData.noteContent = {
+            noteId: currentNoteId,
+            content: changes.content,
+            documentId: docId
+          };
+          lastSavedContent.current.set(currentNoteId, changes.content);
+        }
       }
       
-      // Add title changes
-      if (changes.title && documentId) {
+      // Add title changes - only if title actually changed
+      if (changes.title && documentId && changes.title !== lastSavedTitle.current) {
         batchData.documentTitle = {
           documentId: documentId,
           title: changes.title
         };
+        lastSavedTitle.current = changes.title;
       }
       
-      // Add analytics changes
+      // Add analytics changes - only if significant changes
       if (changes.analytics) {
         batchData.analytics = changes.analytics;
       }
       
-      // Add spelling changes
+      // Add spelling changes - only if significant changes
       if (changes.spelling) {
         batchData.spelling = changes.spelling;
+      }
+      
+      // Only save if there are actual changes
+      if (Object.keys(batchData).length === 0) {
+        // Clear pending changes since nothing changed
+        pendingChanges.current = {
+          content: null,
+          title: null,
+          analytics: null,
+          spelling: null
+        };
+        return;
       }
       
       // Send batch save request
@@ -264,22 +284,13 @@ export default function DocumentPage() {
         spelling: null
       };
       
-      // Update last saved content
-      if (changes.content) {
-        if (activeTab === 'chapter' && currentChapterId) {
-          lastSavedContent.current.set(currentChapterId, changes.content);
-        } else if (activeTab === 'notes' && currentNoteId) {
-          lastSavedContent.current.set(currentNoteId, changes.content);
-        }
-      }
-      
     } catch (error) {
       console.error('Batch save failed:', error);
       // Don't interrupt user - silent fail
     }
   }, [activeTab, currentChapterId, currentNoteId, documentId, docId]);
 
-  // Schedule batch save
+  // Schedule batch save - reduced from 5 seconds to 2 seconds
   const scheduleBatchSave = useCallback(() => {
     if (batchSaveTimeout.current) {
       clearTimeout(batchSaveTimeout.current);
@@ -287,7 +298,7 @@ export default function DocumentPage() {
     
     batchSaveTimeout.current = setTimeout(() => {
       batchSave();
-    }, 5000); // 5 second debounce
+    }, 2000); // 2 second debounce - much faster response
   }, [batchSave]);
 
   // Add change to batch
@@ -657,6 +668,7 @@ export default function DocumentPage() {
   let updateTimeout: NodeJS.Timeout | null = null;
   const { updateWordCount } = useEditorStore();
 
+  const [isLoading, setIsLoading] = useState(true);
   // We'll use a helper state to track when both are loaded
   const [docLoaded, setDocLoaded] = useState(false);
   const [chaptersLoaded, setChaptersLoaded] = useState(false);
@@ -743,64 +755,50 @@ export default function DocumentPage() {
       });
   }, [currentNoteId, activeTab]);
 
-  // Handler for switching to a different chapter - LAZY LOADING
+  // Optimized click handlers for chapters and notes
   const handleChapterClick = useCallback(async (chapterId: string) => {
-    if (chapterId === currentChapterId) return;
-    
-    console.log('🔄 Switching to chapter:', chapterId);
-    console.log('📊 Current content before switch:', content?.substring(0, 50) + '...');
-    
-    // Save current chapter content to cache first (no API call for instant switching)
-    if (currentChapterId && content !== undefined) {
-      console.log('💾 Saving current chapter content:', currentChapterId, 'Length:', content.length);
+    // Save current content before switching
+    if (activeTab === 'chapter' && currentChapterId && content !== undefined) {
       chapterContentCache.current.set(currentChapterId, content);
-    }
-    
-    // Load chapter content lazily
-    const chapterContent = await loadChapterLazily(chapterId);
-    console.log('📖 Loaded content for chapter:', chapterId, 'Length:', chapterContent.length);
-    console.log('📊 Content preview:', chapterContent.substring(0, 50) + '...');
-    
-    setCurrentChapterIdWithPersistence(chapterId);
-    setContent(chapterContent);
-  }, [currentChapterId, content, loadChapterLazily]);
-
-  // Handler for switching notes - LAZY LOADING
-  const handleNoteClick = useCallback(async (noteId: string) => {
-    if (noteId === currentNoteId) return;
-    
-    console.log('🔄 Switching to note:', noteId);
-    console.log('📊 Current content before switch:', content?.substring(0, 50) + '...');
-    
-    // Save current note content to cache first (no API call for instant switching)
-    if (currentNoteId && content !== undefined && activeTab === 'notes') {
-      console.log('💾 Saving current note content:', currentNoteId, 'Length:', content.length);
+    } else if (activeTab === 'notes' && currentNoteId && content !== undefined) {
       noteContentCache.current.set(currentNoteId, content);
     }
     
-    // Load note content lazily
-    const noteContent = await loadNoteLazily(noteId);
-    console.log('📖 Loaded content for note:', noteId, 'Length:', noteContent.length);
-    console.log('📊 Content preview:', noteContent.substring(0, 50) + '...');
+    setCurrentChapterIdWithPersistence(chapterId);
+    setActiveTabWithPersistence('chapter');
+    
+    // Load chapter content with caching
+    await loadContent(chapterId, 'chapter');
+    
+    // Initialize pages for the content
+    const cachedContent = contentCache.current.get(chapterId) || '';
+    const newPages = splitContentIntoPages(cachedContent);
+    setPages(newPages);
+  }, [content, activeTab, currentChapterId, currentNoteId, loadContent, splitContentIntoPages]);
+  
+  const handleNoteClick = useCallback(async (noteId: string) => {
+    // Save current content before switching
+    if (activeTab === 'chapter' && currentChapterId && content !== undefined) {
+      chapterContentCache.current.set(currentChapterId, content);
+    } else if (activeTab === 'notes' && currentNoteId && content !== undefined) {
+      noteContentCache.current.set(currentNoteId, content);
+    }
     
     setCurrentNoteIdWithPersistence(noteId);
-    if (activeTab === 'notes') {
-      setContent(noteContent);
-    }
-  }, [currentNoteId, content, activeTab, loadNoteLazily]);
+    setActiveTabWithPersistence('notes');
+    
+    // Load note content with caching
+    await loadContent(noteId, 'note');
+    
+    // Initialize pages for the content
+    const cachedContent = contentCache.current.get(noteId) || '';
+    const newPages = splitContentIntoPages(cachedContent);
+    setPages(newPages);
+  }, [content, activeTab, currentChapterId, currentNoteId, loadContent, splitContentIntoPages]);
 
   // Load document and chapters
   useEffect(() => {
     if (!docId || docId === 'new') return;
-    
-    // Clear caches on new document load to prevent stale data
-    chapterContentCache.current.clear();
-    noteContentCache.current.clear();
-    loadedChapters.current.clear();
-    loadedNotes.current.clear();
-    setIsLoading(true);
-    setIsDataLoaded(false);
-    
     fetch(`/api/documents/${docId}`)
       .then(res => {
         if (!res.ok) throw new Error('Document not found');
@@ -810,94 +808,29 @@ export default function DocumentPage() {
         if (!text) throw new Error('Empty response');
         const data = JSON.parse(text);
         setTitle(data.title === 'Untitled document' ? '' : data.title || '');
+        setDocumentId(docId as string);
         setDocLoaded(true);
-        // Don't set isDataLoaded here - wait for chapters to load
-        setIsLoading(false);
       })
       .catch(err => {
-        console.error('Failed to load document:', err);
         setTitle('');
+        setDocumentId(docId as string);
         setDocLoaded(true);
-        setIsLoading(false);
       });
   }, [docId]);
 
-  // Load chapters
+  // Load chapters when document is loaded
   useEffect(() => {
-    if (!docId || docId === 'new' || !docLoaded) return;
-    
-    console.log('🔄 Loading chapters for document:', docId);
-    
-    fetch(`/api/chapters?documentId=${docId}`)
-      .then(res => res.json())
-      .then(data => {
-        const chaptersArray = Array.isArray(data) ? data : [];
-        console.log('📚 Loaded chapters:', chaptersArray.length);
-        console.log('📚 Chapters data:', chaptersArray);
-        
-        // Validate that we don't have duplicate chapters
-        const uniqueChapters = chaptersArray.filter((chapter, index, self) => 
-          index === self.findIndex(c => c.id === chapter.id)
-        );
-        
-        if (uniqueChapters.length !== chaptersArray.length) {
-          console.warn('⚠️ Duplicate chapters detected, filtering...');
-        }
-        
-        console.log('📚 Setting chapters state:', uniqueChapters);
-        setChapters(uniqueChapters);
-        
-        // Set initial chapter if none selected
-        if (uniqueChapters.length > 0 && !currentChapterId) {
-          console.log('📚 Setting initial chapter:', uniqueChapters[0].id);
-          setCurrentChapterIdWithPersistence(uniqueChapters[0].id);
-        }
-        
-        setIsInitialLoadComplete(true);
-        // Now set isDataLoaded to true since both document and chapters are loaded
-        console.log('✅ Setting isDataLoaded to true');
-        setIsDataLoaded(true);
-      })
-      .catch(err => {
-        console.error('Failed to load chapters:', err);
-        setChapters([]);
-        setIsInitialLoadComplete(true);
-        // Set isDataLoaded even if chapters fail to load
-        setIsDataLoaded(true);
-      });
-  }, [docId, docLoaded, currentChapterId]);
+    if (documentId) {
+      loadChapters().then(() => setChaptersLoaded(true));
+    }
+  }, [documentId, loadChapters]);
 
-  // Load notes
+  // Load notes when document is loaded
   useEffect(() => {
-    if (!docId || docId === 'new' || !docLoaded) return;
-    
-    fetch(`/api/notes?documentId=${docId}`)
-      .then(res => res.json())
-      .then(data => {
-        const notesArray = Array.isArray(data) ? data : [];
-        console.log('📝 Loaded notes:', notesArray.length);
-        
-        // Validate that we don't have duplicate notes
-        const uniqueNotes = notesArray.filter((note, index, self) => 
-          index === self.findIndex(n => n.id === note.id)
-        );
-        
-        if (uniqueNotes.length !== notesArray.length) {
-          console.warn('⚠️ Duplicate notes detected, filtering...');
-        }
-        
-        setNotes(uniqueNotes);
-        
-        // Set initial note if none selected and we're in notes tab
-        if (uniqueNotes.length > 0 && !currentNoteId && activeTab === 'notes') {
-          setCurrentNoteIdWithPersistence(uniqueNotes[0].id);
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load notes:', err);
-        setNotes([]);
-      });
-  }, [docId, docLoaded, currentNoteId, activeTab]);
+    if (documentId) {
+      loadNotes().then(() => setNotesLoaded(true));
+    }
+  }, [documentId, loadNotes]);
 
   // Set content based on active tab - allow immediate typing
   useEffect(() => {
@@ -984,8 +917,9 @@ export default function DocumentPage() {
 
   // Title saving - add to batch instead of individual save
   useEffect(() => {
-    if (!documentId || !title.trim()) return;
-    addToBatch('title', title);
+    if (title && documentId && title !== lastSavedTitle.current) {
+      addToBatch('title', title);
+    }
   }, [title, documentId, addToBatch]);
 
   useEffect(() => {
@@ -1050,14 +984,28 @@ export default function DocumentPage() {
     
     if (!hasEdited && newContent.trim() !== '') setHasEdited(true);
     
-    // Add to batch save instead of individual save
-    addToBatch('content', newContent);
+    // Only add to batch if content actually changed significantly
+    const lastSaved = activeTab === 'chapter' && currentChapterId 
+      ? lastSavedContent.current.get(currentChapterId)
+      : activeTab === 'notes' && currentNoteId 
+        ? lastSavedContent.current.get(currentNoteId)
+        : null;
     
-    // Show saving indicator (non-blocking)
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-    }, 1000);
+    // Only save if content changed by more than just whitespace
+    const contentChanged = lastSaved !== newContent && 
+      newContent.trim() !== lastSaved?.trim();
+    
+    if (contentChanged) {
+      addToBatch('content', newContent);
+    }
+    
+    // Show saving indicator (non-blocking) - only if actually saving
+    if (contentChanged) {
+      setIsSaving(true);
+      setTimeout(() => {
+        setIsSaving(false);
+      }, 1000);
+    }
   };
 
   const handleUndo = () => {
@@ -1240,6 +1188,45 @@ export default function DocumentPage() {
     }
   }, [docId, router]);
 
+  // Content loading optimization
+  const contentLoadingRef = useRef(new Set<string>());
+  const contentCache = useRef(new Map<string, string>());
+  
+  // Load content with caching
+  const loadContent = useCallback(async (id: string, type: 'chapter' | 'note') => {
+    // Check if already loading
+    if (contentLoadingRef.current.has(id)) return;
+    
+    // Check cache first
+    const cached = contentCache.current.get(id);
+    if (cached) {
+      setContent(cached);
+      return;
+    }
+    
+    // Mark as loading
+    contentLoadingRef.current.add(id);
+    
+    try {
+      const response = await fetch(`/api/${type}s/${id}?documentId=${docId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.content || '';
+        
+        // Cache the content
+        contentCache.current.set(id, content);
+        setContent(content);
+        
+        // Update last saved content
+        lastSavedContent.current.set(id, content);
+      }
+    } catch (error) {
+      console.error(`Failed to load ${type} content:`, error);
+    } finally {
+      contentLoadingRef.current.delete(id);
+    }
+  }, [docId]);
+
   if (creatingNewDoc) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -1307,33 +1294,87 @@ export default function DocumentPage() {
             
             <div className="flex items-center">
                 {editing ? (
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={title}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={title}
                     onChange={handleTitleChange}
-                    onBlur={handleTitleBlur}
-                    className="text-2xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-0"
-                    placeholder="Untitled document"
+                    onBlur={() => {
+                      setEditing(false);
+                      if (!title.trim()) setTitle('');
+                    }}
+                    onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        setEditing(false);
+                    }
+                  }}
+                    className="text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                      width: Math.max(200, Math.min(900, (title?.length || 0) * 7 + 20)),
+                      marginTop: '-80px' 
+                    }}
                   />
                 ) : (
-                  <h1 
-                    onClick={handleTitleClick}
-                    className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
-                  >
-                    {title || 'Untitled document'}
-                  </h1>
+                <span
+                    ref={spanRef}
+                    onClick={() => {
+                      // console.log('Title clicked!');
+                      setEditing(true);
+                    }}
+                    className={`text-sm font-medium cursor-pointer hover:text-gray-600 hover:bg-gray-100 rounded px-2 py-1 transition-colors ${title ? 'text-gray-900' : 'text-gray-400'}`}
+                    style={{ marginTop: '-80px' }}
+                >
+                  {title || 'Untitled document'}
+                </span>
                 )}
-                
-                {/* Show loading indicator if data is not fully loaded */}
-                {!isDataLoaded && (
-                  <div className="ml-3 flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                    <span className="ml-2 text-sm text-gray-500">Loading...</span>
-                  </div>
-                )}
+              </div>
             </div>
-          </div>
+          
+          {/* Right side - Toolbar */}
+          <div className="flex items-center space-x-4">
+            <Toolbar 
+              editor={editor}
+              totalWordCount={totalWordCount}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={editor ? editor.can().undo() : false}
+              canRedo={editor ? editor.can().redo() : false}
+              fontSize={fontSize}
+              setFontSize={setFontSize}
+              onViewAllPages={async () => {
+                // Show page overview popup instantly with cached content only
+                console.log('📄 Opening page overview instantly');
+                setShowPageOverview(true);
+                
+                // Load uncached chapters in background
+                const uncachedChapters = chapters.filter(chapter => 
+                  !chapterContentCache.current.has(chapter.id)
+                );
+                
+                if (uncachedChapters.length > 0) {
+                  console.log(`📄 Loading ${uncachedChapters.length} uncached chapters in background`);
+                  
+                  // Load chapters in parallel for speed
+                  const loadPromises = uncachedChapters.map(async (chapter) => {
+                    try {
+                      const response = await fetch(`/api/chapters/${chapter.id}?documentId=${docId}`);
+                      const data = await response.json();
+                      const chapterContent = data.content || '';
+                      chapterContentCache.current.set(chapter.id, chapterContent);
+                      console.log(`📄 Loaded chapter: ${chapter.title || chapter.id}`);
+                    } catch (error) {
+                      console.error('Failed to load chapter:', chapter.id, error);
+                    }
+                  });
+                  
+                  // Load in background - don't wait
+                  Promise.all(loadPromises).then(() => {
+                    console.log('📄 All background chapters loaded');
+                  });
+                }
+              }}
+            />
+        </div>
         </div>
       </header>
 
@@ -1446,7 +1487,7 @@ export default function DocumentPage() {
         {activeTab === 'chapter' && (
           <button
                 onClick={async () => {
-                  if (!documentId || isAddingChapter || !isDataLoaded) return;
+                  if (!documentId || isAddingChapter) return;
                   setIsAddingChapter(true);
                   try {
                     const response = await fetch('/api/chapters', {
@@ -1472,9 +1513,9 @@ export default function DocumentPage() {
                     setIsAddingChapter(false);
                   }
                 }}
-                disabled={isAddingChapter || !isDataLoaded}
+                disabled={isAddingChapter}
               className={`w-6 h-6 rounded-full text-white flex items-center justify-center transition-colors ml-6 ${
-                isAddingChapter || !isDataLoaded
+                isAddingChapter 
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
@@ -1493,7 +1534,7 @@ export default function DocumentPage() {
           {activeTab === 'notes' && (
             <button
               onClick={async () => {
-                if (!documentId || isAddingNote || !isDataLoaded) return;
+                if (!documentId || isAddingNote) return;
                 setIsAddingNote(true);
                 try {
                   const response = await fetch('/api/notes', {
@@ -1519,13 +1560,13 @@ export default function DocumentPage() {
                   setIsAddingNote(false);
                 }
               }}
-              disabled={isAddingNote || !isDataLoaded}
+              disabled={isAddingNote}
               className={`w-6 h-6 rounded-full text-white flex items-center justify-center transition-colors ml-6 ${
-                isAddingNote || !isDataLoaded
+                isAddingNote 
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
-              style={{ fontSize: '14px', lineHeight: '1', zIndex: 50, fontWeight: 'normal', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              style={{ fontSize: '14px', lineHeight: '1', zIndex: '50', fontWeight: 'normal', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
             >
               {isAddingNote ? (
                 <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1539,98 +1580,89 @@ export default function DocumentPage() {
           )}
         </div>
 
-                {/* Chapters List */}
-        {activeTab === 'chapter' && (
-          <div className="mt-2 w-full" style={{ width: '270px' }}>
-            <div className="space-y-1 max-h-[520px] overflow-y-auto chapter-list-scroll pr-0">
-              {console.log('🎨 Rendering chapters:', chapters.length, chapters)}
-              {chapters.length === 0 ? (
-                <div className="p-4 text-gray-500 text-center">
-                  {isDataLoaded ? 'No chapters yet' : 'Loading chapters...'}
-                </div>
-              ) : (
-                chapters.map((chapter, idx) => (
-                  <div
-                    key={chapter.id}
-                    className={`p-4 rounded-2xl transition-all duration-200 relative group cursor-pointer ${
-                      currentChapterId === chapter.id
-                        ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 shadow-sm'
-                        : 'hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent'
-                    }`}
-                    onClick={() => handleChapterClick(chapter.id)}
-                    style={{ minHeight: '60px' }}
-                  >
-                      {editingItemId === chapter.id ? (
-                        // Inline editing mode
-                        <div className="flex-1 mr-3">
-                          <input
-                            type="text"
-                            value={editingItemTitle}
-                            onChange={(e) => setEditingItemTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleRenameSubmit();
-                              } else if (e.key === 'Escape') {
-                                e.preventDefault();
-                                handleRenameCancel();
-                              }
-                            }}
-                            onBlur={handleRenameBlur}
-                            className="w-full text-base font-medium text-gray-800 bg-transparent border border-blue-300 rounded-sm outline-none focus:outline-none focus:border-blue-500"
-                            style={{ 
-                              padding: '1px 2px',
-                              margin: '0',
-                              height: 'auto',
-                              minHeight: '0',
-                              lineHeight: 'inherit'
-                            }}
-                            data-editing-id={chapter.id}
-                          />
-                        </div>
-                      ) : (
-                        // Normal display mode
-                        <div className="flex items-center" style={{ marginRight: '40px' }}>
-                          <DocumentTextIcon className="h-5 w-5 text-blue-500 mr-3" style={{ marginLeft: '8px' }} />
-                          <span 
-                            className="text-lg font-medium truncate text-blue-700"
-                            style={{ marginLeft: '8px' }}
-                          >
-                          {chapter.title || `Chapter ${idx + 1}`}
-                      </span>
-                        </div>
-                      )}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              const menuHeight = 80; // Approximate height of the menu
-                              const windowHeight = window.innerHeight;
-                              const spaceBelow = windowHeight - rect.bottom;
-                              const spaceAbove = rect.top;
-                              
-                              // Determine if menu should open up or down
-                              const shouldOpenUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
-                              
-                              setOpenChapterMenuId(chapter.id);
-                              setChapterPopupPosition({ 
-                                x: e.clientX, 
-                                y: shouldOpenUp ? rect.top - menuHeight : e.clientY 
-                              });
-                            }}
-                            className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors opacity-0 group-hover:opacity-100"
-                            style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}
-                          >
-                            <EllipsisVerticalIcon className="h-5 w-5" />
-                          </button>
-                  </div>
-                ))
-              )}
-            </div>
+                {/* Chapters List - Always Visible */}
+        <div className="mt-2 w-full" style={{ width: '270px' }}>
+          <div className="space-y-1 max-h-[520px] overflow-y-auto chapter-list-scroll pr-0">
+            {chapters.map((chapter, idx) => (
+              <div
+                key={chapter.id}
+                className={`p-4 rounded-2xl transition-all duration-200 relative group cursor-pointer ${
+                  currentChapterId === chapter.id && activeTab === 'chapter'
+                    ? 'bg-blue-50 border-2 border-blue-200 text-blue-700 shadow-sm'
+                    : 'hover:bg-blue-50 hover:border-blue-200 border-2 border-transparent'
+                }`}
+                onClick={() => handleChapterClick(chapter.id)}
+                style={{ minHeight: '60px' }}
+              >
+                  {editingItemId === chapter.id ? (
+                    // Inline editing mode
+                    <div className="flex-1 mr-3">
+                      <input
+                        type="text"
+                        value={editingItemTitle}
+                        onChange={(e) => setEditingItemTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleRenameSubmit();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            handleRenameCancel();
+                          }
+                        }}
+                        onBlur={handleRenameBlur}
+                        className="w-full text-base font-medium text-gray-800 bg-transparent border border-blue-300 rounded-sm outline-none focus:outline-none focus:border-blue-500"
+                        style={{ 
+                          padding: '1px 2px',
+                          margin: '0',
+                          height: 'auto',
+                          minHeight: '0',
+                          lineHeight: 'inherit'
+                        }}
+                        data-editing-id={chapter.id}
+                      />
+                    </div>
+                  ) : (
+                    // Normal display mode
+                    <div className="flex items-center" style={{ marginRight: '40px' }}>
+                      <DocumentTextIcon className="h-5 w-5 text-blue-500 mr-3" style={{ marginLeft: '8px' }} />
+                      <span 
+                        className="text-lg font-medium truncate text-blue-700"
+                        style={{ marginLeft: '8px' }}
+                      >
+                      {chapter.title || `Chapter ${idx + 1}`}
+                  </span>
+                    </div>
+                  )}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const menuHeight = 80; // Approximate height of the menu
+                          const windowHeight = window.innerHeight;
+                          const spaceBelow = windowHeight - rect.bottom;
+                          const spaceAbove = rect.top;
+                          
+                          // Determine if menu should open up or down
+                          const shouldOpenUp = spaceBelow < menuHeight && spaceAbove > menuHeight;
+                          
+                          setOpenChapterMenuId(chapter.id);
+                          setChapterPopupPosition({ 
+                            x: e.clientX, 
+                            y: shouldOpenUp ? rect.top - menuHeight : e.clientY 
+                          });
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors opacity-0 group-hover:opacity-100"
+                        style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)' }}
+                      >
+                        <EllipsisVerticalIcon className="h-5 w-5" />
+                      </button>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Notes List */}
+        {/* Notes List - Only visible when notes tab is active */}
         {activeTab === 'notes' && (
           <div className="mt-2 w-full" style={{ width: '270px' }}>
             <div className="space-y-1 max-h-[520px] overflow-y-auto chapter-list-scroll pr-0">
@@ -1720,25 +1752,14 @@ export default function DocumentPage() {
         <div className="mx-auto mt-2" style={{ maxWidth: '820px' }}>
           {/* Simple editor container */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            {!isDataLoaded ? (
-              // Show loading state when data is not ready
-              <div className="flex items-center justify-center h-64">
-                <div className="flex items-center space-x-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  <span className="text-gray-600">Loading your document...</span>
-                </div>
-              </div>
-            ) : (
-              // Only render editor when data is loaded
-              <PaginatedEditor
-                content={content}
-                onChange={handleContentChange}
-                placeholder={activeTab === 'chapter' ? "Start writing your chapter..." : "Start writing your note..."}
-                onEditorReady={handleEditorReady}
-                showToolbar={false}
-                fontSize={fontSize}
-              />
-            )}
+            <PaginatedEditor
+              content={content}
+              onChange={handleContentChange}
+              placeholder={activeTab === 'chapter' ? "Start writing your chapter..." : "Start writing your note..."}
+              onEditorReady={handleEditorReady}
+              showToolbar={false}
+              fontSize={fontSize}
+            />
           </div>
         </div>
       </main>
