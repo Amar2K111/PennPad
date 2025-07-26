@@ -35,6 +35,11 @@ export default function DocumentPage() {
   const [showPageOverview, setShowPageOverview] = useState(false);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Add loading states to prevent race conditions
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
   // Function to extract text from HTML content
   const extractTextFromHTML = (htmlContent: string): string => {
     if (!htmlContent) return '';
@@ -652,7 +657,6 @@ export default function DocumentPage() {
   let updateTimeout: NodeJS.Timeout | null = null;
   const { updateWordCount } = useEditorStore();
 
-  const [isLoading, setIsLoading] = useState(true);
   // We'll use a helper state to track when both are loaded
   const [docLoaded, setDocLoaded] = useState(false);
   const [chaptersLoaded, setChaptersLoaded] = useState(false);
@@ -788,6 +792,15 @@ export default function DocumentPage() {
   // Load document and chapters
   useEffect(() => {
     if (!docId || docId === 'new') return;
+    
+    // Clear caches on new document load to prevent stale data
+    chapterContentCache.current.clear();
+    noteContentCache.current.clear();
+    loadedChapters.current.clear();
+    loadedNotes.current.clear();
+    setIsLoading(true);
+    setIsDataLoaded(false);
+    
     fetch(`/api/documents/${docId}`)
       .then(res => {
         if (!res.ok) throw new Error('Document not found');
@@ -797,29 +810,85 @@ export default function DocumentPage() {
         if (!text) throw new Error('Empty response');
         const data = JSON.parse(text);
         setTitle(data.title === 'Untitled document' ? '' : data.title || '');
-        setDocumentId(docId as string);
         setDocLoaded(true);
+        setIsDataLoaded(true);
+        setIsLoading(false);
       })
       .catch(err => {
+        console.error('Failed to load document:', err);
         setTitle('');
-        setDocumentId(docId as string);
         setDocLoaded(true);
+        setIsDataLoaded(true);
+        setIsLoading(false);
       });
   }, [docId]);
 
-  // Load chapters when document is loaded
+  // Load chapters
   useEffect(() => {
-    if (documentId) {
-      loadChapters().then(() => setChaptersLoaded(true));
-    }
-  }, [documentId, loadChapters]);
+    if (!docId || docId === 'new' || !docLoaded) return;
+    
+    fetch(`/api/chapters?documentId=${docId}`)
+      .then(res => res.json())
+      .then(data => {
+        const chaptersArray = Array.isArray(data) ? data : [];
+        console.log('📚 Loaded chapters:', chaptersArray.length);
+        
+        // Validate that we don't have duplicate chapters
+        const uniqueChapters = chaptersArray.filter((chapter, index, self) => 
+          index === self.findIndex(c => c.id === chapter.id)
+        );
+        
+        if (uniqueChapters.length !== chaptersArray.length) {
+          console.warn('⚠️ Duplicate chapters detected, filtering...');
+        }
+        
+        setChapters(uniqueChapters);
+        
+        // Set initial chapter if none selected
+        if (uniqueChapters.length > 0 && !currentChapterId) {
+          setCurrentChapterIdWithPersistence(uniqueChapters[0].id);
+        }
+        
+        setIsInitialLoadComplete(true);
+      })
+      .catch(err => {
+        console.error('Failed to load chapters:', err);
+        setChapters([]);
+        setIsInitialLoadComplete(true);
+      });
+  }, [docId, docLoaded, currentChapterId]);
 
-  // Load notes when document is loaded
+  // Load notes
   useEffect(() => {
-    if (documentId) {
-      loadNotes().then(() => setNotesLoaded(true));
-    }
-  }, [documentId, loadNotes]);
+    if (!docId || docId === 'new' || !docLoaded) return;
+    
+    fetch(`/api/notes?documentId=${docId}`)
+      .then(res => res.json())
+      .then(data => {
+        const notesArray = Array.isArray(data) ? data : [];
+        console.log('📝 Loaded notes:', notesArray.length);
+        
+        // Validate that we don't have duplicate notes
+        const uniqueNotes = notesArray.filter((note, index, self) => 
+          index === self.findIndex(n => n.id === note.id)
+        );
+        
+        if (uniqueNotes.length !== notesArray.length) {
+          console.warn('⚠️ Duplicate notes detected, filtering...');
+        }
+        
+        setNotes(uniqueNotes);
+        
+        // Set initial note if none selected and we're in notes tab
+        if (uniqueNotes.length > 0 && !currentNoteId && activeTab === 'notes') {
+          setCurrentNoteIdWithPersistence(uniqueNotes[0].id);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load notes:', err);
+        setNotes([]);
+      });
+  }, [docId, docLoaded, currentNoteId, activeTab]);
 
   // Set content based on active tab - allow immediate typing
   useEffect(() => {
@@ -1229,87 +1298,33 @@ export default function DocumentPage() {
             
             <div className="flex items-center">
                 {editing ? (
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={title}
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={title}
                     onChange={handleTitleChange}
-                    onBlur={() => {
-                      setEditing(false);
-                      if (!title.trim()) setTitle('');
-                    }}
-                    onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                        setEditing(false);
-                    }
-                  }}
-                    className="text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500"
-                  style={{
-                      width: Math.max(200, Math.min(900, (title?.length || 0) * 7 + 20)),
-                      marginTop: '-80px' 
-                    }}
+                    onBlur={handleTitleBlur}
+                    className="text-2xl font-bold text-gray-900 bg-transparent border-none outline-none focus:ring-0"
+                    placeholder="Untitled document"
                   />
                 ) : (
-                <span
-                    ref={spanRef}
-                    onClick={() => {
-                      // console.log('Title clicked!');
-                      setEditing(true);
-                    }}
-                    className={`text-sm font-medium cursor-pointer hover:text-gray-600 hover:bg-gray-100 rounded px-2 py-1 transition-colors ${title ? 'text-gray-900' : 'text-gray-400'}`}
-                    style={{ marginTop: '-80px' }}
-                >
-                  {title || 'Untitled document'}
-                </span>
+                  <h1 
+                    onClick={handleTitleClick}
+                    className="text-2xl font-bold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
+                  >
+                    {title || 'Untitled document'}
+                  </h1>
                 )}
-              </div>
+                
+                {/* Show loading indicator if data is not fully loaded */}
+                {!isDataLoaded && (
+                  <div className="ml-3 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-sm text-gray-500">Loading...</span>
+                  </div>
+                )}
             </div>
-          
-          {/* Right side - Toolbar */}
-          <div className="flex items-center space-x-4">
-            <Toolbar 
-              editor={editor}
-              totalWordCount={totalWordCount}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              canUndo={editor ? editor.can().undo() : false}
-              canRedo={editor ? editor.can().redo() : false}
-              fontSize={fontSize}
-              setFontSize={setFontSize}
-              onViewAllPages={async () => {
-                // Show page overview popup instantly with cached content only
-                console.log('📄 Opening page overview instantly');
-                setShowPageOverview(true);
-                
-                // Load uncached chapters in background
-                const uncachedChapters = chapters.filter(chapter => 
-                  !chapterContentCache.current.has(chapter.id)
-                );
-                
-                if (uncachedChapters.length > 0) {
-                  console.log(`📄 Loading ${uncachedChapters.length} uncached chapters in background`);
-                  
-                  // Load chapters in parallel for speed
-                  const loadPromises = uncachedChapters.map(async (chapter) => {
-                    try {
-                      const response = await fetch(`/api/chapters/${chapter.id}?documentId=${docId}`);
-                      const data = await response.json();
-                      const chapterContent = data.content || '';
-                      chapterContentCache.current.set(chapter.id, chapterContent);
-                      console.log(`📄 Loaded chapter: ${chapter.title || chapter.id}`);
-                    } catch (error) {
-                      console.error('Failed to load chapter:', chapter.id, error);
-                    }
-                  });
-                  
-                  // Load in background - don't wait
-                  Promise.all(loadPromises).then(() => {
-                    console.log('📄 All background chapters loaded');
-                  });
-                }
-              }}
-            />
-        </div>
+          </div>
         </div>
       </header>
 
@@ -1422,7 +1437,7 @@ export default function DocumentPage() {
         {activeTab === 'chapter' && (
           <button
                 onClick={async () => {
-                  if (!documentId || isAddingChapter) return;
+                  if (!documentId || isAddingChapter || !isDataLoaded) return;
                   setIsAddingChapter(true);
                   try {
                     const response = await fetch('/api/chapters', {
@@ -1448,9 +1463,9 @@ export default function DocumentPage() {
                     setIsAddingChapter(false);
                   }
                 }}
-                disabled={isAddingChapter}
+                disabled={isAddingChapter || !isDataLoaded}
               className={`w-6 h-6 rounded-full text-white flex items-center justify-center transition-colors ml-6 ${
-                isAddingChapter 
+                isAddingChapter || !isDataLoaded
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
@@ -1469,7 +1484,7 @@ export default function DocumentPage() {
           {activeTab === 'notes' && (
             <button
               onClick={async () => {
-                if (!documentId || isAddingNote) return;
+                if (!documentId || isAddingNote || !isDataLoaded) return;
                 setIsAddingNote(true);
                 try {
                   const response = await fetch('/api/notes', {
@@ -1495,13 +1510,13 @@ export default function DocumentPage() {
                   setIsAddingNote(false);
                 }
               }}
-              disabled={isAddingNote}
+              disabled={isAddingNote || !isDataLoaded}
               className={`w-6 h-6 rounded-full text-white flex items-center justify-center transition-colors ml-6 ${
-                isAddingNote 
+                isAddingNote || !isDataLoaded
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
-              style={{ fontSize: '14px', lineHeight: '1', zIndex: '50', fontWeight: 'normal', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              style={{ fontSize: '14px', lineHeight: '1', zIndex: 50, fontWeight: 'normal', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
             >
               {isAddingNote ? (
                 <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1689,14 +1704,25 @@ export default function DocumentPage() {
         <div className="mx-auto mt-2" style={{ maxWidth: '820px' }}>
           {/* Simple editor container */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <PaginatedEditor
-              content={content}
-              onChange={handleContentChange}
-              placeholder={activeTab === 'chapter' ? "Start writing your chapter..." : "Start writing your note..."}
-              onEditorReady={handleEditorReady}
-              showToolbar={false}
-              fontSize={fontSize}
-            />
+            {!isDataLoaded ? (
+              // Show loading state when data is not ready
+              <div className="flex items-center justify-center h-64">
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="text-gray-600">Loading your document...</span>
+                </div>
+              </div>
+            ) : (
+              // Only render editor when data is loaded
+              <PaginatedEditor
+                content={content}
+                onChange={handleContentChange}
+                placeholder={activeTab === 'chapter' ? "Start writing your chapter..." : "Start writing your note..."}
+                onEditorReady={handleEditorReady}
+                showToolbar={false}
+                fontSize={fontSize}
+              />
+            )}
           </div>
         </div>
       </main>

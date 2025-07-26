@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRightIcon, SparklesIcon, CheckCircleIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { ArrowRightIcon, SparklesIcon } from '@heroicons/react/24/outline'
 
 export default function HomePage() {
   return (
@@ -34,12 +34,11 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Write Better with{' '}
-            <span className="text-blue-600">AI Assistance</span>
+            Write Your Book.{' '}
+            <span className="text-blue-600">Share Your Story.</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            PennPad combines powerful AI writing assistance, advanced grammar checking, 
-            and real-time collaboration to help you create exceptional content.
+            PennPad gives aspiring authors the tools to plan, write, and finish their books—complete with AI writing assistance, advanced grammar checking, and distraction-free focus. Start your author journey today!
           </p>
           
           <div className="max-w-md mx-auto mb-12">
@@ -55,33 +54,22 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mt-20">
+        {/* Images Section */}
+        <div className="grid md:grid-cols-2 gap-12 mt-20">
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-            <SparklesIcon className="h-12 w-12 text-blue-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-3">AI Writing Assistant</h3>
-            <p className="text-gray-600">
-              Get intelligent suggestions for improving your writing style, 
-              generating content, and enhancing clarity.
-            </p>
+            <img 
+              src="/ai-features-screenshot.png" 
+              alt="AI Features" 
+              className="w-full h-auto rounded-lg"
+            />
           </div>
           
           <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-            <CheckCircleIcon className="h-12 w-12 text-green-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-3">Grammar & Spell Check</h3>
-            <p className="text-gray-600">
-              Advanced grammar checking with support for multiple languages 
-              and real-time error detection.
-            </p>
-          </div>
-          
-          <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-            <UserGroupIcon className="h-12 w-12 text-purple-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-3">Real-time Collaboration</h3>
-            <p className="text-gray-600">
-              Work together with your team in real-time, 
-              with live editing and commenting features.
-            </p>
+            <img 
+              src="/daily-goals-screenshot.png" 
+              alt="Daily Goals" 
+              className="w-full h-auto rounded-lg"
+            />
           </div>
         </div>
       </div>
