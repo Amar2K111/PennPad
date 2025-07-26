@@ -171,7 +171,17 @@ export default function SettingsPage() {
                     });
                     setSaving(false);
                     if (res.ok) {
-                      setUser({ ...user, displayName: newDisplayName.trim() });
+                      if (user) {
+                        setUser({ 
+                          ...user, 
+                          displayName: newDisplayName.trim(),
+                          id: user.id,
+                          email: user.email,
+                          createdAt: user.createdAt,
+                          isPremium: user.isPremium,
+                          lastLoginAt: user.lastLoginAt
+                        });
+                      }
                       setEditingName(false);
                     } else {
                       // Optionally show error

@@ -168,19 +168,19 @@ export default function DocumentPage() {
 
   const [title, setTitle] = useState('');
   const [editing, setEditing] = useState(false);
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const spanRef = useRef(null);
   const mirrorRef = useRef(null);
   const [inputWidth, setInputWidth] = useState(0);
-  const [documentId, setDocumentId] = useState(null);
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [hasEdited, setHasEdited] = useState(false);
   const hasMounted = useRef(false);
   const router = useRouter();
-  const [history, setHistory] = useState([]);
-  const [redoHistory, setRedoHistory] = useState([]);
+  const [history, setHistory] = useState<string[]>([]);
+  const [redoHistory, setRedoHistory] = useState<string[]>([]);
   const [fontSize, setFontSize] = useState(11);
-  const [editor, setEditor] = useState(null);
+  const [editor, setEditor] = useState<any>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [currentChapterId, setCurrentChapterId] = useState<string | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -523,7 +523,7 @@ export default function DocumentPage() {
     setDeleteItemTitle('');
   };
 
-  const handleEditorReady = useCallback((editorInstance) => {
+  const handleEditorReady = useCallback((editorInstance: any) => {
     // Prevent infinite re-renders by checking if editor is already set
     if (editor && editor === editorInstance) return;
     
@@ -571,7 +571,7 @@ export default function DocumentPage() {
         // Set current chapter from localStorage or first chapter
         const savedChapterId = localStorage.getItem('currentChapterId');
         const chaptersArray = data.chapters || [];
-        if (savedChapterId && chaptersArray.some(ch => ch.id === savedChapterId)) {
+        if (savedChapterId && chaptersArray.some((ch: any) => ch.id === savedChapterId)) {
           setCurrentChapterIdWithPersistence(savedChapterId);
         } else if (chaptersArray.length > 0) {
           setCurrentChapterIdWithPersistence(chaptersArray[0].id);
@@ -594,7 +594,7 @@ export default function DocumentPage() {
         // Set current note from localStorage or first note
         const savedNoteId = localStorage.getItem('currentNoteId');
         const notesArray = data.notes || [];
-        if (savedNoteId && notesArray.some(note => note.id === savedNoteId)) {
+        if (savedNoteId && notesArray.some((note: any) => note.id === savedNoteId)) {
           setCurrentNoteIdWithPersistence(savedNoteId);
         } else if (notesArray.length > 0) {
           setCurrentNoteIdWithPersistence(notesArray[0].id);
@@ -649,7 +649,7 @@ export default function DocumentPage() {
 
 
 
-  let updateTimeout = null;
+  let updateTimeout: NodeJS.Timeout | null = null;
   const { updateWordCount } = useEditorStore();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -797,12 +797,12 @@ export default function DocumentPage() {
         if (!text) throw new Error('Empty response');
         const data = JSON.parse(text);
         setTitle(data.title === 'Untitled document' ? '' : data.title || '');
-        setDocumentId(docId);
+        setDocumentId(docId as string);
         setDocLoaded(true);
       })
       .catch(err => {
         setTitle('');
-        setDocumentId(docId);
+        setDocumentId(docId as string);
         setDocLoaded(true);
       });
   }, [docId]);
@@ -864,7 +864,9 @@ export default function DocumentPage() {
       saveCurrentChapter();
     }, 5000);
     
-    return () => clearTimeout(updateTimeout);
+    return () => {
+      if (updateTimeout) clearTimeout(updateTimeout);
+    };
   }, [content, currentChapterId, activeTab, saveCurrentChapter]);
 
   // Debounced auto-save for notes (removed natural breaks for smoother typing)
@@ -882,7 +884,9 @@ export default function DocumentPage() {
       saveCurrentNote();
     }, 5000);
     
-    return () => clearTimeout(updateTimeout);
+    return () => {
+      if (updateTimeout) clearTimeout(updateTimeout);
+    };
   }, [content, currentNoteId, activeTab, saveCurrentNote]);
 
   // Final save on page unload
@@ -912,8 +916,10 @@ export default function DocumentPage() {
       const range = document.createRange();
       range.selectNodeContents(el);
       const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
       setHasAutoSelected(true);
     }
   }, [isFocused, title, hasAutoSelected]);
@@ -943,7 +949,7 @@ export default function DocumentPage() {
     if (!title.trim()) setTitle('');
   };
 
-  const handleTitleChange = (e) => {
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTitle(e.target.value);
     if (!hasEdited && e.target.value.trim() !== '') setHasEdited(true);
   };
@@ -1356,12 +1362,11 @@ export default function DocumentPage() {
               {/* Scrollbar thumb */}
               <div 
                 className="absolute w-2 bg-gray-400 rounded-full cursor-pointer hover:bg-gray-500 transition-colors"
-                style={{ 
-                  top: '0px',
-                  height: '60px',
+                style={{
+                  position: 'absolute',
+                  top: '2px',
                   left: '2px',
-                  right: '2px',
-                  maxTop: '540px'
+                  right: '2px'
                 }}
               ></div>
             </div>

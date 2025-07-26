@@ -8,11 +8,11 @@ import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import FontFamily from '@tiptap/extension-font-family'
-import FontSize from '@tiptap/extension-font-size'
+
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
 import Toolbar from './Toolbar'
-import { PageManager } from '../extensions/PageManager'
+
 
 interface MultiPageEditorProps {
   content?: string
@@ -51,9 +51,6 @@ export default function MultiPageEditor({
         },
       }),
       FontFamily,
-      FontSize.configure({
-        types: ['textStyle'],
-      }),
       TextAlign.configure({
         types: ['heading', 'paragraph'],
         alignments: ['left', 'center', 'right', 'justify'],
@@ -67,32 +64,6 @@ export default function MultiPageEditor({
       Underline,
       Placeholder.configure({
         placeholder,
-      }),
-      PageManager.configure({
-        pageHeight: 1056,
-        pagePadding: {
-          top: 50,
-          bottom: 96,
-          left: 40,
-          right: 40,
-        },
-        onPageCountChange: (newPageCount) => {
-          setPageCount(newPageCount)
-        },
-        onPageCreate: (pageIndex) => {
-          const newPage = { content: '', id: Date.now().toString() };
-          setPages(prevPages => {
-            const newPages = [...prevPages];
-            newPages.splice(pageIndex + 1, 0, newPage);
-            return newPages;
-          });
-        },
-        onPageRemove: (pageIndex) => {
-          setPages(prevPages => {
-            const newPages = prevPages.filter((_, index) => index !== pageIndex);
-            return newPages;
-          });
-        },
       }),
     ],
     content: content || '<p class="single-paragraph"></p>',
@@ -194,7 +165,7 @@ export default function MultiPageEditor({
       {/* Toolbar */}
       {showToolbar && (
         <div style={{ flexShrink: 0, marginBottom: '20px' }}>
-          <Toolbar editor={editor} />
+          <Toolbar editor={editor} totalWordCount={0} />
         </div>
       )}
       

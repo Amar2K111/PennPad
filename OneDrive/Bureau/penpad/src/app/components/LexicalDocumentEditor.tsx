@@ -15,6 +15,7 @@ import { LinkNode } from '@lexical/link'
 import { ListNode, ListItemNode } from '@lexical/list'
 import { CodeNode, CodeHighlightNode } from '@lexical/code'
 import LexicalToolbar from './LexicalToolbar'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 
 interface LexicalDocumentEditorProps {
   content?: string
@@ -327,6 +328,7 @@ export default function LexicalDocumentEditor({
                 {placeholder}
               </div>
             }
+            ErrorBoundary={LexicalErrorBoundary}
           />
           
           <HistoryPlugin />

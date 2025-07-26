@@ -31,9 +31,9 @@ export default function PaywallPage() {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: firebaseUser.displayName || firebaseUser.email || '',
-          photoURL: firebaseUser.photoURL || '',
-          emailVerified: firebaseUser.emailVerified,
           createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
+          isPremium: false,
+          lastLoginAt: new Date(),
         });
         setReady(true);
       } else {

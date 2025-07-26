@@ -70,6 +70,7 @@ export interface EditorStore {
   longestStreak: number
   lastActiveDate: Date | null
   celebration: boolean
+  activeFontSize: number
 
   setCurrentDocument: (document: Document | null) => void
   addDocument: (document: Document) => void
@@ -91,6 +92,7 @@ export interface EditorStore {
   setLongestStreak: (count: number) => void
   setLastActiveDate: (date: Date | null) => void
   setCelebration: (celebration: boolean) => void
+  setActiveFontSize: (size: number) => void
   loadAnalyticsFromCloud: () => Promise<void>
   saveAnalyticsToCloud: () => Promise<void>
   saveSpellingSettingsToCloud: (documentId: string, personalDictionary: string[], autocorrectMap: Record<string, string>, ignoredErrors: any[]) => Promise<void>

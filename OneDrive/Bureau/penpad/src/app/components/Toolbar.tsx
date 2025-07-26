@@ -52,7 +52,7 @@ export default function Toolbar({
   const setFontSize = setFontSizeProp || setFontSizeState
   const [alignDropdownOpen, setAlignDropdownOpen] = useState(false)
   const [alignment, setAlignment] = useState('left')
-  const alignBtnRef = useRef(null)
+  const alignBtnRef = useRef<HTMLButtonElement | null>(null)
   const [spacingDropdownOpen, setSpacingDropdownOpen] = useState(false)
   const BASE_LINE_HEIGHT = 1.15;
   const lineSpacingOptions = [
@@ -62,18 +62,18 @@ export default function Toolbar({
     { label: 'Double', value: '2.0' },
   ];
   const [lineSpacing, setLineSpacing] = useState('1.15');
-  const spacingBtnRef = useRef(null)
-  const dropdownRef = useRef(null)
+  const spacingBtnRef = useRef<HTMLButtonElement | null>(null)
+  const dropdownRef = useRef<HTMLDivElement | null>(null)
   const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 })
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false)
-  const colorBtnRef = useRef(null)
-  const colorDropdownRef = useRef(null)
+  const colorBtnRef = useRef<HTMLButtonElement | null>(null)
+  const colorDropdownRef = useRef<HTMLDivElement | null>(null)
   const [colorDropdownPos, setColorDropdownPos] = useState({ left: 0, top: 0 })
   const [highlightDropdownOpen, setHighlightDropdownOpen] = useState(false)
-  const highlightBtnRef = useRef(null)
-  const highlightDropdownRef = useRef(null)
+  const highlightBtnRef = useRef<HTMLButtonElement | null>(null)
+  const highlightDropdownRef = useRef<HTMLDivElement | null>(null)
   const [highlightDropdownPos, setHighlightDropdownPos] = useState({ left: 0, top: 0 })
-  const spacingDropdownRef = useRef(null)
+  const spacingDropdownRef = useRef<HTMLDivElement | null>(null)
   const {
     wordCount,
     dailyCount,
@@ -302,7 +302,7 @@ export default function Toolbar({
         const marks = selection.$from.marks();
         console.log('📊 Marks after application:', marks);
         
-        const fontSizeMark = marks.find(mark => mark.type.name === 'textStyle');
+        const fontSizeMark = marks.find((mark: any) => mark.type.name === 'textStyle');
         if (fontSizeMark) {
           console.log('✅ Font size mark found:', fontSizeMark.attrs);
         } else {
@@ -664,9 +664,9 @@ export default function Toolbar({
   }
 
   // Map lineSpacing to line-height only (no margin to prevent conflicts)
-  const spacingToMargin = {
-    '1.0': { lineHeight: '1.0' },      // Single
-    '1.15': { lineHeight: '1.286' },   // 1.286 (18px for 14px font)
+  const spacingToMargin: { [key: string]: { lineHeight: string } } = {
+    '1.0': { lineHeight: '1.0' },     // Single
+    '1.15': { lineHeight: '1.15' },   // 1.15
     '1.5': { lineHeight: '1.5' },     // 1.5
     '2.0': { lineHeight: '2.0' },      // Double
   };
@@ -709,7 +709,7 @@ export default function Toolbar({
           const paragraphs = editorElement.querySelectorAll('p');
           console.log('🔍 [TOOLBAR] Found paragraphs for selection:', paragraphs.length);
           
-          paragraphs.forEach((p, index) => {
+          paragraphs.forEach((p: Element, index) => {
             const pElement = p as HTMLElement;
             const pRange = editor.state.doc.resolve(editor.state.selection.from).start();
             const pEnd = editor.state.doc.resolve(editor.state.selection.to).end();
@@ -813,7 +813,7 @@ export default function Toolbar({
           
           // Apply spacing to NEW text only (from cursor paragraph forward)
           console.log('🔍 [TOOLBAR] Applying spacing to NEW text only:');
-          paragraphs.forEach((p, index) => {
+          paragraphs.forEach((p: Element, index) => {
             const pElement = p as HTMLElement;
             
             // Only apply to the VERY NEXT paragraph after the cursor paragraph
@@ -927,7 +927,7 @@ export default function Toolbar({
               const paragraphs = editorElement.querySelectorAll('p');
               console.log('🔍 [TOOLBAR-UPDATE] Found paragraphs for selection:', paragraphs.length);
               
-              paragraphs.forEach((p, index) => {
+              paragraphs.forEach((p: Element, index) => {
                 const pElement = p as HTMLElement;
                 const pRange = editor.state.doc.resolve(editor.state.selection.from).start();
                 const pEnd = editor.state.doc.resolve(editor.state.selection.to).end();
@@ -1031,7 +1031,7 @@ export default function Toolbar({
               
               // Apply spacing to NEW text only (from cursor paragraph forward)
               console.log('🔍 [TOOLBAR] Applying spacing to NEW text only:');
-              paragraphs.forEach((p, index) => {
+              paragraphs.forEach((p: Element, index) => {
                 const pElement = p as HTMLElement;
                 
                 // Only apply to the VERY NEXT paragraph after the cursor paragraph
@@ -1118,12 +1118,12 @@ export default function Toolbar({
   }, [lineSpacing, editor, spacingToMargin]);
 
   useEffect(() => {
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         alignBtnRef.current &&
-        !alignBtnRef.current.contains(event.target) &&
+        !alignBtnRef.current.contains(event.target as Node) &&
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setAlignDropdownOpen(false);
       }
@@ -1134,12 +1134,12 @@ export default function Toolbar({
 
   useEffect(() => {
     if (!spacingDropdownOpen) return;
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         spacingBtnRef.current &&
-        !spacingBtnRef.current.contains(event.target) &&
+        !spacingBtnRef.current.contains(event.target as Node) &&
         spacingDropdownRef.current &&
-        !spacingDropdownRef.current.contains(event.target)
+        !spacingDropdownRef.current.contains(event.target as Node)
       ) {
         setSpacingDropdownOpen(false);
       }
@@ -1149,11 +1149,11 @@ export default function Toolbar({
   }, [spacingDropdownOpen]);
 
   // Helper to check if a mark is active or stored
-  const isMarkActive = (mark) => {
+  const isMarkActive = (mark: string) => {
     if (!editor) return false;
     if (editor.isActive(mark)) return true;
     const stored = editor.state.storedMarks;
-    return stored ? stored.some(m => m.type.name === mark) : false;
+    return stored ? stored.some((m: any) => m.type.name === mark) : false;
   }
 
   // Helper to check current text alignment
@@ -1324,12 +1324,12 @@ export default function Toolbar({
   }, [colorDropdownOpen])
 
   useEffect(() => {
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         colorBtnRef.current &&
-        !colorBtnRef.current.contains(event.target) &&
+        !colorBtnRef.current.contains(event.target as Node) &&
         colorDropdownRef.current &&
-        !colorDropdownRef.current.contains(event.target)
+        !colorDropdownRef.current.contains(event.target as Node)
       ) {
         setColorDropdownOpen(false);
       }
@@ -1362,12 +1362,12 @@ export default function Toolbar({
   }, [highlightDropdownOpen])
 
   useEffect(() => {
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         highlightBtnRef.current &&
-        !highlightBtnRef.current.contains(event.target) &&
+        !highlightBtnRef.current.contains(event.target as Node) &&
         highlightDropdownRef.current &&
-        !highlightDropdownRef.current.contains(event.target)
+        !highlightDropdownRef.current.contains(event.target as Node)
       ) {
         setHighlightDropdownOpen(false);
       }
@@ -1380,10 +1380,10 @@ export default function Toolbar({
 
   // Font size dropdown click outside handler
   useEffect(() => {
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         fontSizeDropdownRef.current &&
-        !fontSizeDropdownRef.current.contains(event.target)
+        !fontSizeDropdownRef.current.contains(event.target as Node)
       ) {
         console.log('📊 Font size dropdown closed by clicking outside');
         setFontSizeDropdownOpen(false);

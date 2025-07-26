@@ -92,7 +92,14 @@ export default function PaginatedEditor({
   const isApplyingFontSize = useRef(false);
 
   // Misspelled word modal state
-  const [grammarErrors, setGrammarErrors] = useState([]);
+  const [grammarErrors, setGrammarErrors] = useState<Array<{
+    from: number;
+    to: number;
+    message: string;
+    suggestions: string[];
+    word: string;
+    type: string;
+  }>>([]);
   
   // AI menu rewrite input state
   const [showRewriteInput, setShowRewriteInput] = useState(false);
@@ -100,8 +107,8 @@ export default function PaginatedEditor({
   const [isRewriting, setIsRewriting] = useState(false);
   const [rewriteInputPosition, setRewriteInputPosition] = useState({ top: 0, left: 0 });
   const [rewriteInputHeight, setRewriteInputHeight] = useState(100);
-  const [previousSelection, setPreviousSelection] = useState(null);
-  const rewriteTextareaRef = useRef(null);
+  const [previousSelection, setPreviousSelection] = useState<string | null>(null);
+  const rewriteTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   
   // AI Accept/Reject popup state
   const [aiPopupVisible, setAiPopupVisible] = useState(false);
@@ -110,7 +117,7 @@ export default function PaginatedEditor({
   const [aiChanges, setAiChanges] = useState(new Map()); // Track AI changes with their original text
   
   // Auto-expand rewrite input based on content length
-  const handleRewriteInputChange = (e) => {
+  const handleRewriteInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const textarea = e.target;
     
@@ -309,7 +316,7 @@ export default function PaginatedEditor({
   };
 
   // Function to handle clicking on highlighted AI text
-  const handleAITextClick = (event) => {
+  const handleAITextClick = (event: React.MouseEvent) => {
     if (!editor) return;
     
     // Get the current selection
@@ -332,7 +339,7 @@ export default function PaginatedEditor({
         console.log('🎯 Clicked on highlighted AI text');
         
         // Get the position of the click
-        const rect = event.target.getBoundingClientRect();
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
         const position = {
           top: rect.top + window.scrollY,
           left: rect.left + (rect.width / 2) + window.scrollX
@@ -430,9 +437,9 @@ export default function PaginatedEditor({
     } catch (error) {
       console.log('💥 Error during rewrite:', error);
       console.log('🔍 Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+        name: (error as Error).name
       });
     } finally {
       console.log('🧹 Cleaning up rewrite state...');
@@ -525,7 +532,16 @@ export default function PaginatedEditor({
     }
   };
   
-  const [contextMenu, setContextMenu] = useState({
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    word: string;
+    suggestions: string[];
+    errorIndex: number | null;
+    from: number | null;
+    to: number | null;
+  }>({
     visible: false,
     x: 0,
     y: 0,
@@ -537,14 +553,14 @@ export default function PaginatedEditor({
   });
 
   // Helper function to save ignored occurrences to localStorage
-  const saveIgnoredOccurrences = (ignoredOccurrences) => {
+  const saveIgnoredOccurrences = (ignoredOccurrences: any[]) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('ignoredOccurrences', JSON.stringify(ignoredOccurrences));
     }
   };
 
   // Custom context menu handler
-  const onContextMenu = async (event) => {
+  const onContextMenu = async (event: React.MouseEvent) => {
     event.preventDefault();
     
     // Only proceed if we have the spell checker loaded
@@ -571,18 +587,20 @@ export default function PaginatedEditor({
   };
   
   // Extract spell checking logic into a reusable function
-  const performSpellChecking = async (spellChecker, event) => {
+  const performSpellChecking = async (spellChecker: any, event: React.MouseEvent) => {
     // Force spell checking to run immediately
     if (editor && spellChecker) {
       const doc = editor.view.state.doc;
       const docSize = doc.content.size;
-      const spellingErrors = [];
+      const spellingErrors: { from: number; to: number; message: string; suggestions: string[]; word: string; type: string }[] = [];
       let wordCount = 0;
       
       // Use the same ProseMirror-based approach as live spell checking
       doc.descendants((node, pos) => {
         if (node.isText) {
           const text = node.text;
+          
+          if (!text) return true;
           
           // Find words in this text node
           const wordRegex = /[a-zA-Z]+/g;
@@ -640,12 +658,20 @@ export default function PaginatedEditor({
       }
     }
   };
-  const [nspell, setNspell] = useState(null);
+  const [nspell, setNspell] = useState<any>(null);
   const [personalDictionary, setPersonalDictionary] = useState<string[]>([]);
   const [autocorrectMap, setAutocorrectMap] = useState<Record<string, string>>({});
-  const [ignoredErrorIndices, setIgnoredErrorIndices] = useState<any[]>([]);
+  const [ignoredErrorIndices, setIgnoredErrorIndices] = useState<Array<{ word: string; from: number; to: number }>>([]);
   // State for left-click suggestion popup
-  const [leftClickPopup, setLeftClickPopup] = useState({
+  const [leftClickPopup, setLeftClickPopup] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    word: string;
+    suggestions: string[];
+    from: number | null;
+    to: number | null;
+  }>({
     visible: false,
     x: 0,
     y: 0,
@@ -678,13 +704,15 @@ export default function PaginatedEditor({
           return;
         }
 
-        const errors = [];
+        const errors: { from: number; to: number; message: string; suggestions: string[]; word: string; type: string }[] = [];
         let wordCount = 0;
         
         // Let's try a different approach - find words by traversing the document structure
         doc.descendants((node, pos) => {
           if (node.isText) {
             const text = node.text;
+            
+            if (!text) return true;
             
             // Find words in this text node
             const wordRegex = /[a-zA-Z]+/g;
@@ -756,7 +784,12 @@ export default function PaginatedEditor({
     
     // Check each auto-correction mapping
     Object.entries(autocorrectMap).forEach(([misspelled, correct]) => {
-      let corrections = [];
+      let corrections: Array<{
+        from: number;
+        to: number;
+        misspelled: string;
+        correct: string;
+      }> = [];
       
       console.log('🔍 [AUTOCORRECT] Looking for:', misspelled, '->', correct);
       
@@ -764,6 +797,8 @@ export default function PaginatedEditor({
       doc.descendants((node, pos) => {
         if (node.isText) {
           const text = node.text;
+          
+          if (!text) return true;
           
           // Find complete words in this text node
           const wordRegex = /[a-zA-Z]+/g;
@@ -783,6 +818,7 @@ export default function PaginatedEditor({
               corrections.push({
                 from: fromPos,
                 to: toPos,
+                misspelled: misspelled,
                 correct: correct
               });
             }
@@ -866,7 +902,7 @@ export default function PaginatedEditor({
           key: spellcheckPluginKey,
           state: {
             init: () => {
-              return { grammarErrors: [] };
+              return { grammarErrors: [], ignoredErrorIndices: [] };
             },
             apply(tr, value) {
               const meta = tr.getMeta(spellcheckPluginKey);
@@ -885,10 +921,10 @@ export default function PaginatedEditor({
               const errors = pluginState?.grammarErrors || [];
               const ignoredErrors = pluginState?.ignoredErrorIndices || [];
               
-              const decorations = [];
-              errors.forEach((err, index) => {
+              const decorations: Decoration[] = [];
+              errors.forEach((err: { word: string; from: number; to: number; suggestions: string[]; message: string; type: string }, index: number) => {
                 // Check if this specific occurrence is ignored
-                const isIgnored = ignoredErrors.some(ignored => 
+                const isIgnored = ignoredErrors.some((ignored: { word: string; from: number; to: number }) => 
                   ignored.word === err.word && 
                   ignored.from === err.from && 
                   ignored.to === err.to
@@ -914,8 +950,8 @@ export default function PaginatedEditor({
                     Decoration.inline(err.from, err.to, { 
                       class: 'grammar-underline',
                       'data-word': err.word,
-                      'data-from': err.from,
-                      'data-to': err.to,
+                      'data-from': err.from.toString(),
+                      'data-to': err.to.toString(),
                       'data-suggestions': JSON.stringify(err.suggestions)
                     })
                   );
@@ -940,10 +976,6 @@ export default function PaginatedEditor({
           HTMLAttributes: {
             class: 'single-paragraph-container',
           },
-          // Prevent multiple paragraphs
-          keepMarks: true,
-          // Ensure all content stays in one paragraph
-          content: 'inline*',
         },
       }),
       CharacterCount,
@@ -1007,8 +1039,6 @@ export default function PaginatedEditor({
         // Let normal typing happen, we'll handle font size in onUpdate
         return false;
       },
-      // Disable browser spellcheck
-      spellCheck: false,
       
       // Handle keydown to clear highlighting when typing
       handleKeyDown: (view, event) => {
@@ -1022,169 +1052,6 @@ export default function PaginatedEditor({
       },
     },
     immediatelyRender: false,
-    onUpdate: ({ editor }) => {
-      // Non-blocking update handler - never block typing
-      // Only skip font size operations if needed
-      if (isApplyingFontSize.current || isReplacingWord.current) {
-        return;
-      }
-      
-      // Simplified approach - just ensure consistent spacing
-      // Let CSS handle the single container behavior
-      try {
-        const editorElement = editor.view.dom as HTMLElement;
-        if (editorElement) {
-          // Get the current line-height from CSS custom property or toolbar
-          const currentLineHeight = getComputedStyle(editorElement).getPropertyValue('--line-height') || '1.15';
-          
-          console.log('🔧 [PAGINATED-EDITOR] Starting styling application:', {
-            currentLineHeight,
-            editorElement: editorElement.tagName,
-            editorElementClasses: editorElement.className
-          });
-          
-          // Apply single paragraph styling to all paragraphs
-          const paragraphs = editorElement.querySelectorAll('p');
-          console.log('🔍 [PAGINATED-EDITOR] Found paragraphs:', paragraphs.length);
-          
-          paragraphs.forEach((p, index) => {
-            const pElement = p as HTMLElement;
-            const beforeLineHeight = pElement.style.lineHeight;
-            const beforeComputedLineHeight = getComputedStyle(pElement).lineHeight;
-            
-            pElement.classList.add('single-paragraph-container');
-            pElement.style.setProperty('margin-bottom', '0', 'important');
-            pElement.style.setProperty('margin-top', '0', 'important');
-            pElement.style.setProperty('display', 'block', 'important');
-            pElement.style.setProperty('min-height', '1em', 'important');
-            // Preserve the toolbar's line-height setting
-            pElement.style.setProperty('line-height', currentLineHeight, 'important');
-            
-            console.log(`📄 [PAGINATED-EDITOR] Paragraph ${index}:`, {
-              textContent: pElement.textContent?.substring(0, 30) + '...',
-              beforeLineHeight,
-              afterLineHeight: pElement.style.lineHeight,
-              beforeComputedLineHeight,
-              afterComputedLineHeight: getComputedStyle(pElement).lineHeight,
-              currentLineHeight
-            });
-          });
-          
-          // Check if we're overriding toolbar settings
-          setTimeout(() => {
-            console.log('🔍 [PAGINATED-EDITOR] Checking for toolbar override:');
-            const toolbarLineHeight = getComputedStyle(editorElement).getPropertyValue('--line-height');
-            console.log('📊 [PAGINATED-EDITOR] Toolbar --line-height:', toolbarLineHeight);
-            console.log('📊 [PAGINATED-EDITOR] Editor element line-height:', getComputedStyle(editorElement).lineHeight);
-          }, 50);
-          
-        }
-      } catch (error) {
-        console.log('⚠️ Error applying single paragraph styling:', error);
-      }
-      
-      // Check for autocorrections only when space is pressed
-      const lastChar = editor.state.doc.textContent.slice(-1);
-      if (lastChar === ' ' || lastChar === '\n' || lastChar === '\t') {
-        checkForAutoCorrection();
-      }
-      
-      // Clear AI highlighting when user starts typing
-      const aiSelection = editor.state.selection;
-      if (aiSelection.empty && editor.state.selection.$from.marks().some(mark => mark.type.name === 'highlight')) {
-        // User is typing and has highlighted text selected, clear the highlight
-        // Use a flag to prevent infinite recursion
-        isApplyingFontSize.current = true;
-        editor.chain()
-          .focus()
-          .unsetMark('highlight')
-          .run();
-        // Reset the flag after a short delay
-        setTimeout(() => {
-          isApplyingFontSize.current = false;
-        }, 10);
-      }
-      
-      // Use font size from cloud store, fallback to localStorage, then props
-      let defaultSize = 14; // fallback
-      if (activeFontSize && activeFontSize > 0) {
-        defaultSize = activeFontSize;
-      } else {
-        // Fallback to localStorage
-        const storedFontSize = localStorage.getItem('activeFontSize');
-        if (storedFontSize) {
-          defaultSize = parseInt(storedFontSize, 10);
-        } else if (fontSize) {
-          // Map toolbar size to pixel size
-          if (fontSize >= 12) defaultSize = fontSize + 3;
-          else if (fontSize >= 8) defaultSize = 14 - (11 - fontSize) * 0.5;
-          else defaultSize = 12;
-        }
-      }
-      
-      // Only apply font size if there's no existing font size mark at the cursor
-      const { selection: fontSelection } = editor.state;
-      const { from: fontFrom } = fontSelection;
-      
-      // Check if there's already a font size mark at the current position
-      const marksAtPosition = editor.state.doc.resolve(fontFrom).marks();
-      const hasFontSizeMark = marksAtPosition.find(mark => mark.type.name === 'textStyle' && mark.attrs.fontSize);
-      
-      // TEMPORARILY DISABLED: Font size application to prevent cursor interference
-      // This was causing the cursor to move back when pressing space
-      /*
-      // Only apply font size if no font size is set AND we're not at the beginning of a word
-      if (!hasFontSizeMark && fontFrom > 0) {
-        // Check if we're at a word boundary (not in the middle of typing)
-        const text = editor.getText();
-        const charBefore = text.charAt(fontFrom - 1);
-        const isWordBoundary = /\s/.test(charBefore); // Space, tab, etc.
-        
-        if (isWordBoundary) {
-          // Apply font size to current position only if no font size is already set
-          isApplyingFontSize.current = true;
-          editor.chain().focus().setMark('textStyle', { fontSize: `${defaultSize}px` }).run();
-          isApplyingFontSize.current = false;
-        }
-      }
-      */
-      
-      const content = editor.getHTML()
-      const text = editor.getText()
-      const wordCount = countWords(text)
-      const characterCount = countCharacters(text)
-      
-      // Check if it's a new day
-      const today = new Date().toDateString()
-      if (lastUpdateDate.current !== today) {
-        // Reset daily count for new day
-        if (dailyGoal > 0) {
-          updateDailyCount(0)
-        }
-        lastUpdateDate.current = today
-      }
-      
-      // Always update dailyCount to match wordCount if a goal is active
-      if (dailyGoal > 0) {
-        if (wordCount > prevWordCount) {
-          updateDailyCount(dailyCount + (wordCount - prevWordCount));
-        }
-        setPrevWordCount(wordCount);
-      }
-      
-      updateWordCount(wordCount)
-      updateCharacterCount(characterCount)
-      
-      // Temporarily disable auto-save to prevent cursor jumping
-      // Auto-save will be handled by the parent component's own logic
-    },
-    onCreate: ({ editor }) => {
-      // Apply font size to entire document on creation
-      if (editor && !editor.isDestroyed) {
-        const defaultSize = activeFontSize || 14;
-        editor.commands.setMark('textStyle', { fontSize: `${defaultSize}px` });
-      }
-    },
   });
 
   // Always notify parent when editor is ready - immediate notification
@@ -1212,7 +1079,7 @@ export default function PaginatedEditor({
   useEffect(() => {
     if (!editor || !onChange) return;
     
-    let onChangeTimeout: NodeJS.Timeout;
+    let onChangeTimeout: NodeJS.Timeout | undefined = undefined;
     let saveTimeout: NodeJS.Timeout;
     
     const handleTyping = () => {
@@ -1357,13 +1224,16 @@ export default function PaginatedEditor({
         return;
       }
 
-      const errors = [];
+      const errors: { from: number; to: number; message: string; suggestions: string[]; word: string; type: string }[] = [];
       let wordCount = 0;
       
       doc.descendants((node, pos) => {
         if (node.isText) {
           const text = node.text;
           
+          if (!text) return true;
+          
+          // Find words in this text node
           const wordRegex = /[a-zA-Z]+/g;
           let match;
           while ((match = wordRegex.exec(text)) !== null) {
@@ -1417,7 +1287,7 @@ export default function PaginatedEditor({
   };
 
   // Shared replacement logic for both left and right click
-  const replaceWordWithSuggestion = (suggestion, word, from, to, closeContextMenu, closeLeftClickPopup) => {
+  const replaceWordWithSuggestion = (suggestion: string, word: string, from: number, to: number, closeContextMenu: () => void, closeLeftClickPopup: () => void) => {
     if (!editor || !suggestion || !word || from == null || to == null) return;
     try {
       isReplacingWord.current = true;
@@ -1447,7 +1317,7 @@ export default function PaginatedEditor({
   };
 
   // Right-click context menu suggestion handler
-  const replaceWord = (suggestion) => {
+  const replaceWord = (suggestion: string) => {
     if (!editor || !contextMenu.word || contextMenu.from == null || contextMenu.to == null) return;
     replaceWordWithSuggestion(
       suggestion,
@@ -1455,7 +1325,7 @@ export default function PaginatedEditor({
       contextMenu.from,
       contextMenu.to,
       () => setContextMenu({ ...contextMenu, visible: false }),
-      null
+      () => {}
     );
   };
 
@@ -1467,7 +1337,7 @@ export default function PaginatedEditor({
       leftClickPopup.word,
       leftClickPopup.from,
       leftClickPopup.to,
-      null,
+      () => {},
       () => setLeftClickPopup({ ...leftClickPopup, visible: false })
     );
   };
@@ -1524,7 +1394,7 @@ export default function PaginatedEditor({
   };
 
   const alwaysCorrectTo = () => {
-    if (!contextMenu.word || !contextMenu.suggestions[0]) return;
+    if (!contextMenu.word || !contextMenu.suggestions[0] || contextMenu.from == null || contextMenu.to == null) return;
     
     // Store the auto-correction mapping
     setAutocorrectMap(prev => {
@@ -1547,7 +1417,7 @@ export default function PaginatedEditor({
       contextMenu.from,
       contextMenu.to,
       () => setContextMenu({ ...contextMenu, visible: false }),
-      null
+      () => {}
     );
   };
 
@@ -1560,14 +1430,14 @@ export default function PaginatedEditor({
   }, [contextMenu]);
 
   // Left-click handler for underlined words
-  const onUnderlineClick = (event) => {
+  const onUnderlineClick = (event: React.MouseEvent) => {
     // Only handle left-click
     if (event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (!editor || !editor.view) return;
     // Get ProseMirror position from DOM event
-    const pos = editor.view.posAtDOM(event.target, 0);
+    const pos = editor.view.posAtDOM(event.target as Node, 0);
     // Find the error at that position
     const errorAtPos = grammarErrors.find(
       err => pos >= err.from && pos < err.to
@@ -1605,8 +1475,8 @@ export default function PaginatedEditor({
     setTimeout(() => {
       const underlineEls = document.querySelectorAll('.grammar-underline');
       underlineEls.forEach(el => {
-        el.removeEventListener('mousedown', onUnderlineClick);
-        el.addEventListener('mousedown', onUnderlineClick);
+        el.removeEventListener('mousedown', onUnderlineClick as any);
+        el.addEventListener('mousedown', onUnderlineClick as any);
       });
     }, 0);
   }, [editor]);
@@ -1650,7 +1520,7 @@ export default function PaginatedEditor({
   };
 
   // More options dropdown
-  const handleMoreOptionsClick = (event) => {
+  const handleMoreOptionsClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
     // Position dropdown closer to the left-click popup
@@ -1670,7 +1540,7 @@ export default function PaginatedEditor({
   }, [moreOptionsDropdown]);
 
   const handleAlwaysCorrect = () => {
-    if (!leftClickPopup.word || !leftClickPopup.suggestions[0]) return;
+    if (!leftClickPopup.word || !leftClickPopup.suggestions[0] || leftClickPopup.from == null || leftClickPopup.to == null) return;
     
     console.log('🔍 [ALWAYS CORRECT] Adding to autocorrect map:', leftClickPopup.word, '->', leftClickPopup.suggestions[0]);
     
@@ -1681,9 +1551,11 @@ export default function PaginatedEditor({
       
       // Save to localStorage and cloud silently
       localStorage.setItem('autocorrectMap', JSON.stringify(newMap));
-      saveSpellingSettingsToCloud(personalDictionary, newMap, ignoredErrorIndices).catch(() => {
-        // Silently handle errors - don't interrupt user
-      });
+      if (currentDocument?.id) {
+        saveSpellingSettingsToCloud(currentDocument.id, personalDictionary, newMap, ignoredErrorIndices).catch(() => {
+          // Silently handle errors - don't interrupt user
+        });
+      }
       return newMap;
     });
     
@@ -1693,7 +1565,7 @@ export default function PaginatedEditor({
       leftClickPopup.word,
       leftClickPopup.from,
       leftClickPopup.to,
-      null,
+      () => {},
       () => setLeftClickPopup({ ...leftClickPopup, visible: false })
     );
     
@@ -1737,9 +1609,11 @@ export default function PaginatedEditor({
     
     // Save to localStorage and cloud silently
     localStorage.setItem('personalDictionary', JSON.stringify(newPersonalDictionary));
-    saveSpellingSettingsToCloud(newPersonalDictionary, autocorrectMap, ignoredErrorIndices).catch(() => {
-      // Silently handle errors - don't interrupt user
-    });
+    if (currentDocument?.id) {
+      saveSpellingSettingsToCloud(currentDocument.id, newPersonalDictionary, autocorrectMap, ignoredErrorIndices).catch(() => {
+        // Silently handle errors - don't interrupt user
+      });
+    }
     
     // Force immediate spell check to remove underline
     setTimeout(() => {
@@ -1831,7 +1705,7 @@ export default function PaginatedEditor({
       
       // Check if the selection is within the editor
       const editorElement = editorContentRef.current;
-      if (!editorElement.contains(range.commonAncestorContainer)) {
+      if (!editorElement || !editorElement.contains(range.commonAncestorContainer)) {
         setAIMenu(menu => ({ ...menu, visible: false }));
         // Close rewrite input when selection is outside editor
         if (showRewriteInput) {
@@ -1974,7 +1848,7 @@ export default function PaginatedEditor({
   useEffect(() => {
     if (!aiMenu.visible) return;
     
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (event: MouseEvent) => {
       // Check if click is outside the AI menu and not on selected text
       const aiMenuElement = document.querySelector('.ai-bubble-menu');
       const selection = window.getSelection();
@@ -2003,7 +1877,7 @@ export default function PaginatedEditor({
         return; // Keep AI menu open if user is interacting with it
       }
       
-      if (aiMenuElement && !aiMenuElement.contains(event.target)) {
+      if (aiMenuElement && !aiMenuElement.contains(event.target as Node)) {
         // Only hide if there's no selection or selection is collapsed
         if (!selection || selection.isCollapsed) {
           // Don't hide AI menu if rewrite input is active
@@ -2055,9 +1929,9 @@ export default function PaginatedEditor({
     };
     
     // Prevent selection from being cleared when clicking on AI menu
-    const handleAIMenuClick = (event) => {
+    const handleAIMenuClick = (event: MouseEvent) => {
       const aiMenuElement = document.querySelector('.ai-bubble-menu');
-      if (aiMenuElement && aiMenuElement.contains(event.target)) {
+      if (aiMenuElement && aiMenuElement.contains(event.target as Node)) {
         event.stopPropagation();
         event.preventDefault();
         // Don't trigger selection change when clicking on AI menu
@@ -2066,9 +1940,9 @@ export default function PaginatedEditor({
     };
     
     // Also prevent mousedown events on AI menu from affecting selection
-    const handleAIMenuMouseDown = (event) => {
+    const handleAIMenuMouseDown = (event: MouseEvent) => {
       const aiMenuElement = document.querySelector('.ai-bubble-menu');
-      if (aiMenuElement && aiMenuElement.contains(event.target)) {
+      if (aiMenuElement && aiMenuElement.contains(event.target as Node)) {
         event.stopPropagation();
         event.preventDefault();
         return false;
@@ -2285,18 +2159,18 @@ export default function PaginatedEditor({
     
     const editorElement = editor.view.dom;
     
-    const handleContextMenu = (event) => {
-      onContextMenu(event);
+    const handleContextMenu = (event: MouseEvent) => {
+      onContextMenu(event as any);
     };
     
-    const handleClick = (event) => {
+    const handleClick = (event: MouseEvent) => {
       // Check if clicked element has grammar-underline class
-      const target = event.target;
+      const target = event.target as HTMLElement;
       if (target.classList.contains('grammar-underline')) {
         
         const word = target.getAttribute('data-word');
-        const from = parseInt(target.getAttribute('data-from'));
-        const to = parseInt(target.getAttribute('data-to'));
+        const from = parseInt(target.getAttribute('data-from') || '0');
+        const to = parseInt(target.getAttribute('data-to') || '0');
         const suggestions = JSON.parse(target.getAttribute('data-suggestions') || '[]');
         
         if (word && from !== null && to !== null) {
@@ -2323,39 +2197,41 @@ export default function PaginatedEditor({
           // Get the text content of the highlighted element
           const highlightedText = highlightedElement.textContent;
           
-          // Find the position of this text in the editor
-          const editorContent = editor.state.doc.textContent;
-          const textIndex = editorContent.indexOf(highlightedText);
-          
-          if (textIndex !== -1) {
-            const from = textIndex;
-            const to = textIndex + highlightedText.length;
+          if (highlightedText) {
+            // Find the position of this text in the editor
+            const editorContent = editor.state.doc.textContent;
+            const textIndex = editorContent.indexOf(highlightedText);
             
-            // Check if this is AI-generated text by looking for it in aiChanges
-            const changeKey = `${from}-${to}`;
-            const isAIGenerated = aiChanges.has(changeKey);
-            
-            if (isAIGenerated) {
-              console.log('🎯 Clicked on AI-generated highlighted text');
+            if (textIndex !== -1) {
+              const from = textIndex;
+              const to = textIndex + highlightedText.length;
               
-              // Get the position of the click
-              const rect = target.getBoundingClientRect();
-              const position = {
-                top: rect.top + window.scrollY,
-                left: rect.left + (rect.width / 2) + window.scrollX
-              };
+              // Check if this is AI-generated text by looking for it in aiChanges
+              const changeKey = `${from}-${to}`;
+              const isAIGenerated = aiChanges.has(changeKey);
               
-              // Select the highlighted text
-              editor.chain()
-                .focus()
-                .setTextSelection({ from, to })
-                .run();
-              
-              setClickedAIText({ from, to, originalText: highlightedText });
-              setAiPopupPosition(position);
-              setAiPopupVisible(true);
-            } else {
-              console.log('🎯 Clicked on user-generated highlighted text - ignoring');
+              if (isAIGenerated) {
+                console.log('🎯 Clicked on AI-generated highlighted text');
+                
+                // Get the position of the click
+                const rect = target.getBoundingClientRect();
+                const position = {
+                  top: rect.top + window.scrollY,
+                  left: rect.left + (rect.width / 2) + window.scrollX
+                };
+                
+                // Select the highlighted text
+                editor.chain()
+                  .focus()
+                  .setTextSelection({ from, to })
+                  .run();
+                
+                setClickedAIText({ from, to, originalText: highlightedText });
+                setAiPopupPosition(position);
+                setAiPopupVisible(true);
+              } else {
+                console.log('🎯 Clicked on user-generated highlighted text - ignoring');
+              }
             }
           }
         }
@@ -2375,11 +2251,11 @@ export default function PaginatedEditor({
   useEffect(() => {
     if (!showRewriteInput) return;
     
-    const handleClickOutside = (event) => {
+    const handleClickOutside = (event: MouseEvent) => {
       // Check if click is outside the rewrite input container
       const rewriteInputContainer = document.querySelector('[data-rewrite-input="true"]');
       
-      if (rewriteInputContainer && !rewriteInputContainer.contains(event.target)) {
+      if (rewriteInputContainer && !rewriteInputContainer.contains(event.target as Node)) {
         console.log('🖱️ Click outside rewrite input - closing');
         setShowRewriteInput(false);
         setRewriteInstruction('');
@@ -2489,7 +2365,7 @@ export default function PaginatedEditor({
                     // Allow Ctrl+A to select all text
                     if (e.ctrlKey && e.key === 'a') {
                 e.preventDefault();
-                      e.target.select();
+                      (e.target as HTMLTextAreaElement).select();
                       console.log('⌨️ Select all text in rewrite input');
                     }
                   }}
@@ -2533,12 +2409,8 @@ export default function PaginatedEditor({
                     flex: '1',
                     userSelect: 'text', // Enable text selection
                     cursor: 'text', // Show text cursor
-                    spellCheck: false, // Disable browser spell checking
-                    WebkitSpellCheck: false, // Disable WebKit spell checking
-                    MozSpellCheck: false, // Disable Firefox spell checking
                     textDecoration: 'none', // Remove any underlines
                     textDecorationLine: 'none', // Remove any underlines
-                    textDecorationStyle: 'none', // Remove any underlines
                     textDecorationColor: 'transparent', // Remove any underlines
               }}
               autoFocus

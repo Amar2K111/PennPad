@@ -29,7 +29,6 @@ import { useUserStore } from '@/app/store/useUserStore'
 import { countWords, countCharacters, calculateReadingTime } from '@/app/lib/utils'
 import Toolbar from './Toolbar'
 import AIBubbleMenu from './AIBubbleMenu'
-import { LineHeight } from '../client-lib/line-height'
 import { franc } from 'franc-min'
 import NSpell from 'nspell'
 import { createPortal } from 'react-dom'
@@ -70,7 +69,7 @@ export default function RichTextEditor({
   } = useEditorStore()
   const userChangedFontSize = useRef(false);
   const lastUpdateDate = useRef<string>('');
-  const [grammarErrors, setGrammarErrors] = useState([]);
+  const [grammarErrors, setGrammarErrors] = useState<Array<{ from: number; to: number; message: string; suggestions: any; word: string; type: string }>>([]);
   const [contextMenu, setContextMenu] = useState({
     visible: false,
     x: 0,
@@ -81,8 +80,8 @@ export default function RichTextEditor({
     from: null,
     to: null,
   });
-  const [nspell, setNspell] = useState(null);
-  const [personalDictionary, setPersonalDictionary] = useState([]);
+  const [nspell, setNspell] = useState<any>(null);
+  const [personalDictionary, setPersonalDictionary] = useState<string[]>([]);
   const [autocorrectMap, setAutocorrectMap] = useState({});
   const [ignoredErrorIndices, setIgnoredErrorIndices] = useState(() => {
     // Load ignored occurrences from localStorage on component mount
@@ -93,7 +92,15 @@ export default function RichTextEditor({
     return [];
   });
   // State for left-click suggestion popup
-  const [leftClickPopup, setLeftClickPopup] = useState({
+  const [leftClickPopup, setLeftClickPopup] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    word: string;
+    suggestions: any[];
+    from: number | null;
+    to: number | null;
+  }>({
     visible: false,
     x: 0,
     y: 0,
@@ -115,64 +122,11 @@ export default function RichTextEditor({
     lastUpdateDate.current = new Date().toDateString()
   }, []);
 
-  // Add context menu event listener to editor
-  useEffect(() => {
-    if (!editor) return;
-    
-    const editorElement = editor.view.dom;
-    console.log('🎯 Adding context menu listener to editor element:', editorElement);
-    
-    const handleContextMenu = (event) => {
-      console.log('🎯 Context menu event captured!', event);
-      onContextMenu(event);
-    };
-    
-    editorElement.addEventListener('contextmenu', handleContextMenu);
-    
-    return () => {
-      editorElement.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }, [editor]);
-
-  // Helper function to save ignored occurrences to localStorage
-  const saveIgnoredOccurrences = (ignoredOccurrences) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ignoredOccurrences', JSON.stringify(ignoredOccurrences));
-    }
-  };
-
-  // Custom context menu handler
-  const onContextMenu = async (event) => {
-    event.preventDefault();
-    if (!editor || !editor.view) return;
-    // Get ProseMirror position from DOM event
-    const pos = editor.view.posAtDOM(event.target, 0);
-    // Find the error at that position
-    const errorAtPos = grammarErrors.find(
-      err => pos >= err.from && pos < err.to
-    );
-    if (errorAtPos) {
-      setContextMenu({
-        visible: true,
-        x: event.clientX,
-        y: event.clientY,
-        word: errorAtPos.word,
-        suggestions: errorAtPos.suggestions,
-        errorIndex: grammarErrors.indexOf(errorAtPos),
-        from: errorAtPos.from,
-        to: errorAtPos.to,
-      });
-    } else {
-      setContextMenu({ ...contextMenu, visible: false });
-    }
-  };
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         paragraph: false,
       }),
-      LineHeight,
       BubbleMenu,
       CharacterCount,
       Color,
@@ -223,16 +177,8 @@ export default function RichTextEditor({
     content,
     editorProps: {
       attributes: {
-        class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] p-4 editor-content',
-        style: 'font-family: Arial, Helvetica Neue, Helvetica, sans-serif; font-size: 11px; color: #181818; line-height: 1.1;',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none',
       },
-      transformPastedHTML(html) {
-        // Remove font-family from inline styles but keep font-size
-        return html.replace(/font-family:[^;"']+;?/gi, '');
-      },
-      // Disable browser spellcheck
-      spellCheck: false,
-      onContextMenu,
     },
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
@@ -296,8 +242,6 @@ export default function RichTextEditor({
       }
     };
     logParagraphStyles();
-    editor.on('update', logParagraphStyles);
-    return () => editor.off('update', logParagraphStyles);
   }, [editor]);
 
   // Load nspell dictionary and spelling settings on mount
@@ -313,13 +257,6 @@ export default function RichTextEditor({
 
     async function loadSpellingSettings() {
       try {
-        const settings = await loadSpellingSettingsFromCloud();
-        setPersonalDictionary(settings.personalDictionary);
-        setAutocorrectMap(settings.autocorrectMap);
-        setIgnoredErrorIndices(settings.ignoredErrors);
-        console.log('🔍 [SPELLING] Loaded settings from cloud:', settings);
-      } catch (error) {
-        console.error('Failed to load spelling settings from cloud:', error);
         // Fallback to localStorage if cloud loading fails
         if (typeof window !== 'undefined') {
           const savedDict = localStorage.getItem('personalDictionary');
@@ -330,6 +267,8 @@ export default function RichTextEditor({
           if (savedAutocorrect) setAutocorrectMap(JSON.parse(savedAutocorrect));
           if (savedIgnored) setIgnoredErrorIndices(JSON.parse(savedIgnored));
         }
+      } catch (error) {
+        console.error('Failed to load spelling settings:', error);
       }
     }
 
@@ -341,7 +280,7 @@ export default function RichTextEditor({
   useEffect(() => {
     if (!editor || !nspell) return;
 
-    let timeoutId;
+    let timeoutId: NodeJS.Timeout | undefined;
     const handler = () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
@@ -377,8 +316,8 @@ export default function RichTextEditor({
             continue;
           }
           // Autocorrect only completed words
-          if (autocorrectMap[word]) {
-            newText += text.slice(lastIndex, match.index) + autocorrectMap[word];
+          if (autocorrectMap[word as keyof typeof autocorrectMap]) {
+            newText += text.slice(lastIndex, match.index) + autocorrectMap[word as keyof typeof autocorrectMap];
             lastIndex = match.index + word.length;
           }
         }
@@ -416,7 +355,7 @@ export default function RichTextEditor({
               word: word,
               type: 'spelling',
             };
-            const isIgnored = ignoredErrorIndices.some(ignored =>
+            const isIgnored = ignoredErrorIndices.some((ignored: { word: string; from: number; to: number }) =>
               ignored.word === spellingError.word &&
               ignored.from === spellingError.from &&
               ignored.to === spellingError.to
@@ -437,8 +376,15 @@ export default function RichTextEditor({
     };
   }, [editor, nspell, personalDictionary, autocorrectMap, ignoredErrorIndices]);
 
+  // Helper function to save ignored occurrences to localStorage
+  const saveIgnoredOccurrences = (ignoredOccurrences: any[]) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ignoredOccurrences', JSON.stringify(ignoredOccurrences));
+    }
+  };
+
   // Replace word with suggestion
-  const replaceWord = (suggestion) => {
+  const replaceWord = (suggestion: string) => {
     if (!editor || contextMenu.from == null || contextMenu.to == null) return;
     // Use the exact ProseMirror positions from the underline/context menu
     editor.chain()
@@ -459,7 +405,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     saveIgnoredOccurrences(newIgnoredOccurrences);
-    saveSpellingSettingsToCloud(personalDictionary, autocorrectMap, newIgnoredOccurrences);
     
     setContextMenu({ ...contextMenu, visible: false });
   };
@@ -471,7 +416,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     localStorage.setItem('personalDictionary', JSON.stringify(newPersonalDictionary));
-    saveSpellingSettingsToCloud(newPersonalDictionary, autocorrectMap, ignoredErrorIndices);
     
     setContextMenu({ ...contextMenu, visible: false });
   };
@@ -483,7 +427,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     localStorage.setItem('autocorrectMap', JSON.stringify(newAutocorrectMap));
-    saveSpellingSettingsToCloud(personalDictionary, newAutocorrectMap, ignoredErrorIndices);
     
     setContextMenu({ ...contextMenu, visible: false });
   };
@@ -501,20 +444,19 @@ export default function RichTextEditor({
     editor,
     className: 'pt-12 pr-4 pb-4 pl-4',
     spellCheck: false,
-    onContextMenu,
   };
 
 
 
   // Left-click handler for underlined words
-  const onUnderlineClick = (event) => {
+  const onUnderlineClick = (event: MouseEvent) => {
     // Only handle left-click
     if (event.button !== 0) return;
     event.stopPropagation();
     event.preventDefault();
     if (!editor || !editor.view) return;
     // Get ProseMirror position from DOM event
-    const pos = editor.view.posAtDOM(event.target, 0);
+    const pos = editor.view.posAtDOM(event.target as Node, 0);
     // Find the error at that position
     const errorAtPos = grammarErrors.find(
       err => pos >= err.from && pos < err.to
@@ -552,8 +494,8 @@ export default function RichTextEditor({
     setTimeout(() => {
       const underlineEls = document.querySelectorAll('.grammar-underline');
       underlineEls.forEach(el => {
-        el.removeEventListener('mousedown', onUnderlineClick);
-        el.addEventListener('mousedown', onUnderlineClick);
+        el.removeEventListener('mousedown', onUnderlineClick as any);
+        el.addEventListener('mousedown', onUnderlineClick as any);
       });
     }, 0);
   }, [editor]);
@@ -577,7 +519,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     saveIgnoredOccurrences(newIgnoredOccurrences);
-    saveSpellingSettingsToCloud(personalDictionary, autocorrectMap, newIgnoredOccurrences);
     
     setLeftClickPopup({ ...leftClickPopup, visible: false });
   };
@@ -632,7 +573,7 @@ export default function RichTextEditor({
     : null;
 
   // More options dropdown
-  const handleMoreOptionsClick = (event) => {
+  const handleMoreOptionsClick = (event: React.MouseEvent) => {
     event.stopPropagation();
     event.preventDefault();
     // Position dropdown below the icon
@@ -659,7 +600,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     localStorage.setItem('autocorrectMap', JSON.stringify(newAutocorrectMap));
-    saveSpellingSettingsToCloud(personalDictionary, newAutocorrectMap, ignoredErrorIndices);
     
     setMoreOptionsDropdown({ ...moreOptionsDropdown, visible: false });
     setLeftClickPopup({ ...leftClickPopup, visible: false });
@@ -671,7 +611,6 @@ export default function RichTextEditor({
     
     // Save to localStorage and cloud
     localStorage.setItem('personalDictionary', JSON.stringify(newPersonalDictionary));
-    saveSpellingSettingsToCloud(newPersonalDictionary, autocorrectMap, ignoredErrorIndices);
     
     setMoreOptionsDropdown({ ...moreOptionsDropdown, visible: false });
     setLeftClickPopup({ ...leftClickPopup, visible: false });
@@ -720,7 +659,7 @@ export default function RichTextEditor({
           className="w-full min-h-[900px]"
           style={{ height: 900, marginBottom: 48, overflow: 'hidden', background: 'transparent', border: 'none', boxShadow: 'none', borderRadius: 0, padding: 0 }}
         >
-          {editor && showToolbar && <Toolbar editor={editor} />}
+          {editor && showToolbar && <Toolbar editor={editor} totalWordCount={0} />}
           <EditorContent editor={editor} />
           </div>
         {/* Future: Render more pages here if content overflows */}
